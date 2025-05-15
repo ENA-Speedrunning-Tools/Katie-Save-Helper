@@ -1,47 +1,75 @@
 ﻿using MelonLoader;
 using UnityEngine;
-using System.Reflection;
-using static System.Runtime.CompilerServices.RuntimeHelpers;
-using HarmonyLib;
 using JoelG.ENA4;
-using KatieSaveToolMod.Patches;
+using KatieSaveHelper.Patches;
 
-[assembly: MelonInfo(typeof(KatieSaveToolMod.KatieSaveToolMod), "Katie Save Tool", "1.0.4", "Katelyndev0211 and Zieraell")]
+[assembly: MelonInfo(typeof(KatieSaveHelper.KatieSaveHelperMod), "Katie Save Helper", "1.0.5", "Katelyndev0211 and Zieraell")]
 
-namespace KatieSaveToolMod
+namespace KatieSaveHelper
 {
-    public class KatieSaveToolMod : MelonMod
+    public class KatieSaveHelperMod : MelonMod
     {
-        private const string modGUID = "Zieraell.KatieSaveTool";
-        private const string modName = "Katie Save Tool";
-        private const string modVersion = "1.0.4.0";
+        private const string modGUID = "Zieraell.KatieSaveHelper";
+        private const string modName = "Katie Save Helper";
+        private const string modVersion = "1.0.5.0";
         private const string modAuthors = "Katelyndev0211 and Zieraell";
 
-        public static MelonPreferences_Category configCategory;
-        public static MelonPreferences_Entry<KeyCode> quickSaveKey;
-        public static MelonPreferences_Entry<KeyCode> reloadSaveKey;
-        public static MelonPreferences_Entry<KeyCode> resetSaveKey;
-        public static MelonPreferences_Entry<KeyCode> resetSaveWithSeedKey;
+        internal static MelonPreferences_Category configCategory;
+        internal static MelonPreferences_Entry<KeyCode> quickSaveKeyConfig;
+        internal static MelonPreferences_Entry<KeyCode> reloadSaveKeyConfig;
+        internal static MelonPreferences_Entry<KeyCode> resetSaveKeyConfig;
+        internal static MelonPreferences_Entry<KeyCode> resetSaveWithSeedKeyConfig;
+        internal static MelonPreferences_Entry<KeyCode> reloadConfigKeyConfig;
+
+        internal static KeyCode quickSaveKey;
+        internal static KeyCode reloadSaveKey;
+        internal static KeyCode resetSaveKey;
+        internal static KeyCode resetSaveWithSeedKey;
+        internal static KeyCode reloadConfigKey;
 
         private readonly HarmonyLib.Harmony harmony = new HarmonyLib.Harmony(modGUID);
 
         internal static bool forceCustomSeed;
         internal static int customSeed;
 
-        public override void OnInitializeMelon()
+        void LoadConfig()
         {
-            // Config setup
-            configCategory = MelonPreferences.CreateCategory("KatieSaveTool", "Katie Save Tool Settings");
+            MelonLogger.Msg("Loading config...");
 
-            quickSaveKey = configCategory.CreateEntry("QuickSaveKey", KeyCode.Alpha1, "Key used to save the game");
-            reloadSaveKey = configCategory.CreateEntry("ReloadSaveKey", KeyCode.Alpha2, "Key used to reload the current save");
-            resetSaveKey = configCategory.CreateEntry("HardResetKey", KeyCode.Alpha0, "Key used to hard reset the current save");
-            resetSaveWithSeedKey = configCategory.CreateEntry("HardResetWithSeedKey", KeyCode.Alpha9, "Key used to hard reset the current save while keeping the same seed");
+            configCategory = MelonPreferences.CreateCategory("KatieSaveHelper", "Katie Save Helper Settings");
+
+            quickSaveKeyConfig = configCategory.CreateEntry("QuickSaveKey", KeyCode.Alpha1, "Key used to save the game");
+            reloadSaveKeyConfig = configCategory.CreateEntry("ReloadSaveKey", KeyCode.Alpha2, "Key used to reload the current save");
+            resetSaveKeyConfig = configCategory.CreateEntry("HardResetKey", KeyCode.Alpha0, "Key used to hard reset the current save");
+            resetSaveWithSeedKeyConfig = configCategory.CreateEntry("HardResetWithSeedKey", KeyCode.Alpha9, "Key used to hard reset the current save while keeping the same seed");
+            reloadConfigKeyConfig = configCategory.CreateEntry("ReloadConfigKey", KeyCode.Alpha8, "Key used to hard reset the current save while keeping the same seed");
 
             configCategory.SaveToFile();
 
+            LoadKeysFromConfig();
+        }
+        void LoadKeysFromConfig()
+        {
+            quickSaveKey = quickSaveKeyConfig.Value;
+            reloadSaveKey = reloadSaveKeyConfig.Value;
+            resetSaveKey = resetSaveKeyConfig.Value;
+            resetSaveWithSeedKey = resetSaveWithSeedKeyConfig.Value;
+            reloadConfigKey = reloadConfigKeyConfig.Value;
+
+            MelonLogger.Msg(
+                $"Using keys: \n" +
+                $"\tSave={quickSaveKey}\n" +
+                $"\tReload={reloadSaveKey}\n" +
+                $"\tReset={resetSaveKey}\n" +
+                $"\tResetWithSeed={resetSaveWithSeedKey}\n" +
+                $"\tReloadConfig={reloadConfigKey}");
+        }
+
+        public override void OnInitializeMelon()
+        {
+            LoadConfig();
+
             MelonLogger.Msg($"{modName} loaded.");
-            MelonLogger.Msg($"Using keys: Save={quickSaveKey.Value}, Reload={reloadSaveKey.Value}, Reset={resetSaveKey.Value}, ResetWithSeed={resetSaveWithSeedKey.Value}");
             MelonLogger.Msg($"Mod by {modAuthors}");
 
             harmony.PatchAll(typeof(SoftResetPatch));
@@ -49,34 +77,40 @@ namespace KatieSaveToolMod
 
         public override void OnUpdate()
         {
-            if (Input.GetKeyDown(quickSaveKey.Value))
+            if (Input.GetKeyDown(quickSaveKey))
             {
-                SaveFile.WriteSave();
                 MelonLogger.Msg("'Quick Save' key pressed");
+                SaveFile.WriteSave();
             }
 
-            if (Input.GetKeyDown(reloadSaveKey.Value))
+            if (Input.GetKeyDown(reloadSaveKey))
             {
-                SaveFile.ContinueSave();
                 MelonLogger.Msg("'Reload Save' key pressed");
-            }
-
-            if (Input.GetKeyDown(resetSaveKey.Value))
-            {
-                SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
-                SaveFile.LoadSave(MetaSaveFile.Current.SaveIndex);
                 SaveFile.ContinueSave();
-                MelonLogger.Msg("'Reset Save' key pressed");
             }
 
-            if (Input.GetKeyDown(resetSaveWithSeedKey.Value))
+            if (Input.GetKeyDown(resetSaveKey))
             {
+                MelonLogger.Msg("'Reset Save' key pressed");
+                SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
+                SaveFile.ContinueSave();
+            }
+
+            if (Input.GetKeyDown(resetSaveWithSeedKey))
+            {
+                MelonLogger.Msg("'Reset Save with Seed' key pressed");
                 forceCustomSeed = true;
                 customSeed = SaveFile.CurrentSave.SaveHash;
                 SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
                 SaveFile.ContinueSave();
                 forceCustomSeed = false;
-                MelonLogger.Msg("'Reset Save with Seed' key pressed");
+            }
+
+            if (Input.GetKeyDown(reloadConfigKey))
+            {
+                MelonLogger.Msg("'Reload Config' key pressed");
+                MelonPreferences.Load();
+                LoadKeysFromConfig();
             }
         }
     }
