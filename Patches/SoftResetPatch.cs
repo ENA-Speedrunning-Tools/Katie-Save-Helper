@@ -2,19 +2,19 @@
 using JoelG.ENA4;
 using System.Reflection;
 
-namespace KatieSaveToolMod.Patches
+namespace KatieSaveHelper.Patches
 {
     [HarmonyPatch(typeof(SaveFileData), nameof(SaveFileData.SoftReset))]
     public class SoftResetPatch
     {
         static void Postfix(SaveFileData __instance)
         {
-            if (KatieSaveToolMod.forceCustomSeed)
+            if (KatieSaveHelperMod.forceCustomSeed)
             {
                 var field = typeof(SaveFileData).GetField("saveHash", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (field != null)
                 {
-                    field.SetValue(__instance, KatieSaveToolMod.customSeed);
+                    field.SetValue(__instance, KatieSaveHelperMod.customSeed);
                 }
             }
         }
