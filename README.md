@@ -22,6 +22,17 @@ To configure the mod, find and edit the `[KatieSaveHelper]` section in `UserData
 
 ## Settings
 
+### Game Tweaks
+
+Options to tweak the game's vanilla functionality
+
+* *DisableGameAutoSave* : Whether the mod should disable the game's automatic saving feature
+    * Values can be 'true' and 'false', default value is 'false'
+
+### Hotkeys
+
+Options to change the keys that trigger the various actions of the mod
+
 * *QuickSaveKey* : Key used to save the game
     * Default value is 'Alpha1'
 * *ReloadSaveKey* : Key used to reload the current save
@@ -33,7 +44,7 @@ To configure the mod, find and edit the `[KatieSaveHelper]` section in `UserData
 * *ReloadConfigKey* : Key used to reload the mod settings from it's config file
     * Default value is 'Alpha8'
 
-### Valid Key Bindings
+#### Valid Key Bindings
 - Alpha0 to Alpha9 (top row number keys)
 - F1 to F12
 - A–Z
@@ -41,3 +52,21 @@ To configure the mod, find and edit the `[KatieSaveHelper]` section in `UserData
 - Space, Escape, Tab, Backspace, LeftShift, RightControl, etc.
 - <sub>Exclaim, DoubleQuote, Hash, Dollar, Percent, Ampersand, Quote, LeftParen, RightParen, Asterisk, Plus, Comma, Minus, Period, Slash, Colon, Semicolon, Less, Equals, Greater, Question, At, LeftBracket, Backslash, RightBracket, Caret, Underscore, BackQuote
 - None
+
+### Scene Transitions
+
+Options to modify the scene change transition for each reload action
+
+* *TransitionType* : Transition type to use for the scene changer object
+    * Values can be 'Immediate' and 'FadeToColor'
+
+The following options will not impact the respective transition if it's type is set to 'Immediate'
+
+* *TransitionColor* : Color the transition will fade into and out of
+    * Value can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
+    * The default color value for transitions is black, or '#000000'
+
+* *TransitionFadeInTime* : The duration of the fade-in effect of the transition
+    * Value can be any float (ex. 0.5, 1.0, 1.05), default value is '0.5'
+* *TransitionFadeOutTime* : The duration of the fade-out effect of the transition
+    * Same value format as above, default value is '0.5'

@@ -1,10 +1,9 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
-using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using JoelG.ENA4;
-using KatieSaveHelper.Patches;
+using UnityEngine.SceneManagement;
 
 namespace KatieSaveHelper
 {
@@ -13,57 +12,22 @@ namespace KatieSaveHelper
     {
         private const string modGUID = "Zieraell.KatieSaveHelper";
         private const string modName = "Katie Save Helper";
-        private const string modVersion = "1.0.5.0";
+        private const string modVersion = "1.0.6.0";
         private const string modAuthors = "Katelyndev0211 and Zieraell";
 
         private readonly Harmony harmony = new Harmony(modGUID);
-        private static KatieSaveHelperMod Instance;
+        internal static KatieSaveHelperMod Instance;
 
         internal static ManualLogSource mls;
 
-        internal static bool forceCustomSeed;
+        internal static SceneChanger.TransitionType customTransitionType = SceneChanger.TransitionType.FadeToColor;
+        internal static bool forceCustomSeed = false;
+        internal static bool forceCustomTransition = false;
         internal static int customSeed;
-
-        internal static ConfigEntry<KeyCode> quickSaveKeyConfig;
-        internal static ConfigEntry<KeyCode> reloadSaveKeyConfig;
-        internal static ConfigEntry<KeyCode> resetSaveKeyConfig;
-        internal static ConfigEntry<KeyCode> resetSaveWithSeedKeyConfig;
-        internal static ConfigEntry<KeyCode> reloadConfigKeyConfig;
-
-        internal static KeyCode quickSaveKey;
-        internal static KeyCode reloadSaveKey;
-        internal static KeyCode resetSaveKey;
-        internal static KeyCode resetSaveWithSeedKey;
-        internal static KeyCode reloadConfigKey;
-
-
-        void LoadConfig()
-        {
-            mls.LogInfo("Loading Config...");
-            quickSaveKeyConfig = Config.Bind("Hotkeys", "QuickSaveKey", KeyCode.Alpha1, "Key used to save the game");
-            reloadSaveKeyConfig = Config.Bind("Hotkeys", "ReloadSaveKey", KeyCode.Alpha2, "Key used to reload the current save");
-            resetSaveKeyConfig = Config.Bind("Hotkeys", "HardResetKey", KeyCode.Alpha0, "Key used to hard reset the current save");
-            resetSaveWithSeedKeyConfig = Config.Bind("Hotkeys", "HardResetWithSeedKey", KeyCode.Alpha9, "Key used to hard reset the current save while keeping the same seed");
-            reloadConfigKeyConfig = Config.Bind("Hotkeys", "ReloadConfigKey", KeyCode.Alpha8, "Key used to reload the mod config");
-            LoadKeysFromConfig();
-        }
-
-        void LoadKeysFromConfig()
-        {
-            quickSaveKey = quickSaveKeyConfig.Value;
-            reloadSaveKey = reloadSaveKeyConfig.Value;
-            resetSaveKey = resetSaveKeyConfig.Value;
-            resetSaveWithSeedKey = resetSaveWithSeedKeyConfig.Value;
-            reloadConfigKey = reloadConfigKeyConfig.Value;
-
-            mls.LogInfo(
-                $"Using keys: \n" +
-                $"\tSave={quickSaveKey}\n" +
-                $"\tReload={reloadSaveKey}\n" +
-                $"\tReset={resetSaveKey}\n" +
-                $"\tResetWithSeed={resetSaveWithSeedKey}\n" +
-                $"\tReloadConfig={reloadConfigKey}");
-        }
+        internal static Color customTransitionColor = Color.black;
+        internal static float customTransitionFadeInTime = 0;
+        internal static float customTransitionFadeOutTime = 0;
+        internal static bool allowSave = false;
 
         void Awake()
         {
@@ -72,9 +36,9 @@ namespace KatieSaveHelper
 
             mls = Logger;
 
-            LoadConfig();
+            KatieSaveHelperModConfig.LoadConfig();
 
-            harmony.PatchAll(typeof(SoftResetPatch));
+            harmony.PatchAll();
 
             mls.LogInfo($"{modName} loaded.");
             mls.LogInfo($"Mod by {modAuthors}");
@@ -82,40 +46,93 @@ namespace KatieSaveHelper
 
         void Update()
         {
-            if (Input.GetKeyDown(quickSaveKey))
+            if (!Input.anyKeyDown)
+            {
+                return;
+            }
+
+            if (Input.GetKeyDown(KatieSaveHelperModConfig.quickSave_Key))
             {
                 mls.LogInfo("'Quick Save' key pressed");
-                SaveFile.WriteSave();
+                string currentSceneName = SceneManager.GetActiveScene().name;
+
+                if (currentSceneName == "Menu")
+                {
+                    mls.LogInfo("Cannot save in Main Menu");
+                    return;
+                }
+
+                allowSave = true;
+                if (currentSceneName == SaveFile.CurrentSave.GameState.GetDestinationScene())
+                {
+                    SaveFile.WriteSaveWithEntrance(SaveFile.CurrentSave.GameState.SavedSceneEntrance);
+                    mls.LogInfo("Save complete");
+                }
+                else
+                {
+                    SaveFile.WriteSaveWithEntrance();
+                    mls.LogInfo("Save complete (Failsafe)");
+                }
+                allowSave = false;
+                return;
             }
 
-            if (Input.GetKeyDown(reloadSaveKey))
+            if (Input.GetKeyDown(KatieSaveHelperModConfig.reloadSave_Key))
             {
                 mls.LogInfo("'Reload Save' key pressed");
+
+                forceCustomTransition = true;
+                customTransitionType = KatieSaveHelperModConfig.reloadSave_TransitionType;
+                customTransitionColor = KatieSaveHelperModConfig.reloadSave_TransitionColor;
+                customTransitionFadeInTime = KatieSaveHelperModConfig.reloadSave_TransitionFadeInTime;
+                customTransitionFadeOutTime = KatieSaveHelperModConfig.reloadSave_TransitionFadeOutTime;
+
                 SaveFile.ContinueSave();
+                forceCustomTransition = false;
+                return;
             }
 
-            if (Input.GetKeyDown(resetSaveKey))
+            if (Input.GetKeyDown(KatieSaveHelperModConfig.resetSave_Key))
             {
                 mls.LogInfo("'Reset Save' key pressed");
+
+                forceCustomTransition = true;
+                customTransitionType = KatieSaveHelperModConfig.resetSave_TransitionType;
+                customTransitionColor = KatieSaveHelperModConfig.resetSave_TransitionColor;
+                customTransitionFadeInTime = KatieSaveHelperModConfig.resetSave_TransitionFadeInTime;
+                customTransitionFadeOutTime = KatieSaveHelperModConfig.resetSave_TransitionFadeOutTime;
+
                 SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
                 SaveFile.ContinueSave();
+                forceCustomTransition = false;
+                return;
             }
 
-            if (Input.GetKeyDown(resetSaveWithSeedKey))
+            if (Input.GetKeyDown(KatieSaveHelperModConfig.resetSaveWithSeed_Key))
             {
                 mls.LogInfo("'Reset Save with Seed' key pressed");
+
+                forceCustomTransition = true;
+                customTransitionType = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionType;
+                customTransitionColor = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionColor;
+                customTransitionFadeInTime = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionFadeInTime;
+                customTransitionFadeOutTime = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionFadeOutTime;
+
                 forceCustomSeed = true;
                 customSeed = SaveFile.CurrentSave.SaveHash;
                 SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
                 SaveFile.ContinueSave();
                 forceCustomSeed = false;
+                forceCustomTransition = false;
+                return;
             }
 
-            if (Input.GetKeyDown(reloadConfigKey))
+            if (Input.GetKeyDown(KatieSaveHelperModConfig.reloadConfig_Key))
             {
                 mls.LogInfo("'Reload Config' key pressed");
                 Config.Reload();
-                LoadKeysFromConfig();
+                KatieSaveHelperModConfig.LoadOptionsFromConfig();
+                return;
             }
         }
     }
