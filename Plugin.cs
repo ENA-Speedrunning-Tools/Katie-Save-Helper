@@ -4,6 +4,8 @@ using HarmonyLib;
 using UnityEngine;
 using JoelG.ENA4;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace KatieSaveHelper
 {
@@ -12,22 +14,26 @@ namespace KatieSaveHelper
     {
         private const string modGUID = "Zieraell.KatieSaveHelper";
         private const string modName = "Katie Save Helper";
-        private const string modVersion = "1.0.6.0";
+        private const string modVersion = "1.0.7.0";
         private const string modAuthors = "Katelyndev0211 and Zieraell";
 
-        private readonly Harmony harmony = new Harmony(modGUID);
         internal static KatieSaveHelperMod Instance;
+
+        internal static bool forceCustomSeedOnReset = false;
+        internal static bool forceCustomSeedOnLoad = false;
+        internal static bool forceCustomTransition = false;
+        internal static int customSeed;
+        internal static Transition customTransition = new Transition(SceneChanger.TransitionType.FadeToColor, Color.black, 0, 0);
+        internal static bool allowSave = false;
+
+        private readonly Harmony harmony = new Harmony(modGUID);
+
+        private static List<IKatieActionBase> cachedActiveActions = new List<IKatieActionBase>();
 
         internal static ManualLogSource mls;
 
-        internal static SceneChanger.TransitionType customTransitionType = SceneChanger.TransitionType.FadeToColor;
-        internal static bool forceCustomSeed = false;
-        internal static bool forceCustomTransition = false;
-        internal static int customSeed;
-        internal static Color customTransitionColor = Color.black;
-        internal static float customTransitionFadeInTime = 0;
-        internal static float customTransitionFadeOutTime = 0;
-        internal static bool allowSave = false;
+        private const int cacheUpdateThreshold = 100;
+        private int cacheUpdateCounter = 0;
 
         void Awake()
         {
@@ -46,94 +52,36 @@ namespace KatieSaveHelper
 
         void Update()
         {
+            if (++cacheUpdateCounter >= cacheUpdateThreshold)
+            {
+                UpdateCachedActions();
+                cacheUpdateCounter = 0;
+            }
+
             if (!Input.anyKeyDown)
             {
                 return;
             }
 
-            if (Input.GetKeyDown(KatieSaveHelperModConfig.quickSave_Key))
+            foreach (IKatieActionBase action in cachedActiveActions)
             {
-                mls.LogInfo("'Quick Save' key pressed");
-                string currentSceneName = SceneManager.GetActiveScene().name;
-
-                if (currentSceneName == "Menu")
+                if (Input.GetKeyDown(action.Key))
                 {
-                    mls.LogInfo("Cannot save in Main Menu");
+                    mls.LogInfo($"'{action.DisplayName}' key pressed");
+                    action.Run();
                     return;
                 }
-
-                allowSave = true;
-                if (currentSceneName == SaveFile.CurrentSave.GameState.GetDestinationScene())
-                {
-                    SaveFile.WriteSaveWithEntrance(SaveFile.CurrentSave.GameState.SavedSceneEntrance);
-                    mls.LogInfo("Save complete");
-                }
-                else
-                {
-                    SaveFile.WriteSaveWithEntrance();
-                    mls.LogInfo("Save complete (Failsafe)");
-                }
-                allowSave = false;
-                return;
             }
+        }
 
-            if (Input.GetKeyDown(KatieSaveHelperModConfig.reloadSave_Key))
-            {
-                mls.LogInfo("'Reload Save' key pressed");
+        public static void setTransition(Transition transition)
+        {
+            customTransition = transition.Copy();
+        }
 
-                forceCustomTransition = true;
-                customTransitionType = KatieSaveHelperModConfig.reloadSave_TransitionType;
-                customTransitionColor = KatieSaveHelperModConfig.reloadSave_TransitionColor;
-                customTransitionFadeInTime = KatieSaveHelperModConfig.reloadSave_TransitionFadeInTime;
-                customTransitionFadeOutTime = KatieSaveHelperModConfig.reloadSave_TransitionFadeOutTime;
-
-                SaveFile.ContinueSave();
-                forceCustomTransition = false;
-                return;
-            }
-
-            if (Input.GetKeyDown(KatieSaveHelperModConfig.resetSave_Key))
-            {
-                mls.LogInfo("'Reset Save' key pressed");
-
-                forceCustomTransition = true;
-                customTransitionType = KatieSaveHelperModConfig.resetSave_TransitionType;
-                customTransitionColor = KatieSaveHelperModConfig.resetSave_TransitionColor;
-                customTransitionFadeInTime = KatieSaveHelperModConfig.resetSave_TransitionFadeInTime;
-                customTransitionFadeOutTime = KatieSaveHelperModConfig.resetSave_TransitionFadeOutTime;
-
-                SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
-                SaveFile.ContinueSave();
-                forceCustomTransition = false;
-                return;
-            }
-
-            if (Input.GetKeyDown(KatieSaveHelperModConfig.resetSaveWithSeed_Key))
-            {
-                mls.LogInfo("'Reset Save with Seed' key pressed");
-
-                forceCustomTransition = true;
-                customTransitionType = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionType;
-                customTransitionColor = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionColor;
-                customTransitionFadeInTime = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionFadeInTime;
-                customTransitionFadeOutTime = KatieSaveHelperModConfig.resetSaveWithSeed_TransitionFadeOutTime;
-
-                forceCustomSeed = true;
-                customSeed = SaveFile.CurrentSave.SaveHash;
-                SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
-                SaveFile.ContinueSave();
-                forceCustomSeed = false;
-                forceCustomTransition = false;
-                return;
-            }
-
-            if (Input.GetKeyDown(KatieSaveHelperModConfig.reloadConfig_Key))
-            {
-                mls.LogInfo("'Reload Config' key pressed");
-                Config.Reload();
-                KatieSaveHelperModConfig.LoadOptionsFromConfig();
-                return;
-            }
+        private static void UpdateCachedActions()
+        {
+            cachedActiveActions = KatieSaveHelperModConfig.allActiveActions.ToList();
         }
     }
 }
