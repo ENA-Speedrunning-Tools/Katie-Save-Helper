@@ -11,7 +11,7 @@ namespace KatieSaveHelper.Patches
     {
         static bool Prefix()
         {
-            if (KatieSaveHelperModConfig.autoSaveDisabled && !KatieSaveHelperMod.allowSave)
+            if (KatieSaveHelperModConfig.autoSaveDisabled.Value && !KatieSaveHelperMod.allowSave)
             {
                 return false;
             }
