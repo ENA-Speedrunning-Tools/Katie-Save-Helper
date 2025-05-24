@@ -14,7 +14,7 @@ In the `BepInEx/config` folder, find and open the `BepInEx.cfg` file, and make s
 
 In the same folder, you can edit the `Zieraell.KatieSaveHelper.cfg` file to configure the mod
 
-### How to Install on [MelonLoader](github.com/LavaGang/MelonLoader/releases/latest)
+### How to Install on [MelonLoader](https://github.com/LavaGang/MelonLoader/releases/latest)
 
 Drag the MelonLoader version of the latest dll into the `Mods` folder
 
