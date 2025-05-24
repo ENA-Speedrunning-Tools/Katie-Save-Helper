@@ -13,10 +13,11 @@ namespace KatieSaveHelper.Patches
         private static readonly FieldInfo saveHashField = typeof(SaveFileData).GetField("saveHash", BindingFlags.NonPublic | BindingFlags.Instance);
         static void Postfix(SaveFileData __instance)
         {
-            if (KatieSaveHelperMod.forceCustomSeed)
+            if (KatieSaveHelperMod.forceCustomSeedOnReset)
             {
                 saveHashField.SetValue(__instance, KatieSaveHelperMod.customSeed);
             }
         }
     }
+
 }

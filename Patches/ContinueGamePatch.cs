@@ -39,8 +39,8 @@ namespace KatieSaveHelper.Patches
             }
             else
             {
-                sceneChanger = new SceneChanger("Outworld", KatieSaveHelperMod.customTransitionColor, KatieSaveHelperMod.customTransitionFadeInTime, KatieSaveHelperMod.customTransitionFadeOutTime);
-                transitionField.SetValue(sceneChanger, KatieSaveHelperMod.customTransitionType);
+                sceneChanger = new SceneChanger("Outworld", KatieSaveHelperMod.customTransition.Color, KatieSaveHelperMod.customTransition.FadeInTime, KatieSaveHelperMod.customTransition.FadeOutTime);
+                transitionField.SetValue(sceneChanger, KatieSaveHelperMod.customTransition.Type);
             }
 
             if (gameState.HasSavedSceneEntry)
