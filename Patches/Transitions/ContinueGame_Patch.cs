@@ -10,11 +10,12 @@ namespace KatieSaveHelper.Patches
     // If performed by the mod, create a custom scene changer object for continuing the save
 
     [HarmonyPatch(typeof(SaveFileData), "ContinueGame")]
-    public class ContinueGamePatch
+    public class ContinueGame_Patch
     {
         private static readonly FieldInfo gameStateField = AccessTools.Field(typeof(SaveFileData), "gameState");
         private static readonly FieldInfo sessionTraversalHistoryField = AccessTools.Field(typeof(SaveFileData), "sessionTraversalHistory");
         private static readonly FieldInfo transitionField = AccessTools.Field(typeof(SceneChanger), "transition");
+        private static readonly FieldInfo milestoneProgressField = AccessTools.Field(typeof(SaveDataPlayerGameState), "milestoneProgress");
 
         public static bool Prefix(SaveFileData __instance, bool resetState = true, float fadeInTime = 1f, float fadeOutTime = 1f)
         {
@@ -24,8 +25,17 @@ namespace KatieSaveHelper.Patches
 
             if (gameState.HasCompletedGame)
             {
-                new SceneChanger("Menu", Color.black, fadeInTime, fadeOutTime).GoToDestination();
-                return false;
+                if (KatieSaveHelperModConfig.disableSaveFileLockAfterCompletion.Value)
+                {
+                    // Reset milestones
+                    milestoneProgressField.SetValue(SaveFile.CurrentSave.GameState, 0);
+                    SaveFile.WriteSave();
+                }
+                else
+                {
+                    new SceneChanger("Menu", Color.black, fadeInTime, fadeOutTime).GoToDestination();
+                    return false;
+                }
             }
 
             if (resetState)
@@ -33,14 +43,15 @@ namespace KatieSaveHelper.Patches
                 sessionTraversalHistory.ResetAllNodes();
             }
 
-            if (!KatieSaveHelperMod.forceCustomTransition)
+            if (!KatieSaveHelperModActions.customTransition.IsReady)
             {
                 sceneChanger = new SceneChanger("Outworld", Color.black, fadeInTime, fadeOutTime);
             }
             else
             {
-                sceneChanger = new SceneChanger("Outworld", KatieSaveHelperMod.customTransition.Color, KatieSaveHelperMod.customTransition.FadeInTime, KatieSaveHelperMod.customTransition.FadeOutTime);
-                transitionField.SetValue(sceneChanger, KatieSaveHelperMod.customTransition.Type);
+                Transition newTransition = KatieSaveHelperModActions.customTransition.TakeValue();
+                sceneChanger = new SceneChanger("Outworld", newTransition.Color, newTransition.FadeInTime, newTransition.FadeOutTime);
+                transitionField.SetValue(sceneChanger, newTransition.Type);
             }
 
             if (gameState.HasSavedSceneEntry)

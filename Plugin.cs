@@ -1,69 +1,66 @@
 ﻿using MelonLoader;
 using UnityEngine;
-using JoelG.ENA4;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
-[assembly: MelonInfo(typeof(KatieSaveHelper.KatieSaveHelperMod), "Katie Save Helper", "1.0.7", "Katelyndev0211 and Zieraell")]
+[assembly: MelonInfo(typeof(KatieSaveHelper.KatieSaveHelperMod), "Katie Save Helper", "1.0.8", "Katelyndev0211 and Zieraell")]
 
 namespace KatieSaveHelper
 {
     public class KatieSaveHelperMod : MelonMod
     {
-        private const string modGUID = "Zieraell.KatieSaveHelper";
-        private const string modName = "Katie Save Helper";
-        private const string modVersion = "1.0.7.0";
-        private const string modAuthors = "Katelyndev0211 and Zieraell";
-
-        internal static bool forceCustomSeedOnReset = false;
-        internal static bool forceCustomSeedOnLoad = false;
-        internal static bool forceCustomTransition = false;
-        internal static int customSeed;
-        internal static Transition customTransition = new Transition(SceneChanger.TransitionType.FadeToColor, Color.black, 0, 0);
-        internal static bool allowSave = false;
+        internal const string modGUID = "Zieraell.KatieSaveHelper";
+        internal const string modName = "Katie Save Helper";
+        internal const string modVersion = "1.0.8.0";
+        internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         private readonly HarmonyLib.Harmony harmony = new HarmonyLib.Harmony(modGUID);
 
         private static List<IKatieActionBase> cachedActiveActions = new List<IKatieActionBase>();
 
-        private const int cacheUpdateThreshold = 100;
-        private int cacheUpdateCounter = 0;
+        private bool configUpdateToken = false;
 
         public override void OnInitializeMelon()
         {
+            // Subscribe to config loads
+            KatieSaveHelperModConfig.OnConfigLoaded += NotifyOnUpdate;
+
             KatieSaveHelperModConfig.LoadConfig();
 
-            MelonLogger.Msg($"{modName} loaded.");
-            MelonLogger.Msg($"Mod by {modAuthors}");
+            // Set up scene load events
+            OnSceneLoadPatch.ApplyStartupPatches();
+
+            // Set default toggle settings
+            KatieSaveHelperModActions.autoSaveDisabled = KatieSaveHelperModConfig.autoSaveDisabledByDefault.Value;
+
+            // Sync assets folder with repo
+            KatieAssetHandler.OnStartup();
+
+            KatieLogger.Info($"{modName} loaded.");
+            KatieLogger.Info($"Mod by {modAuthors}");
         }
 
         public override void OnUpdate()
         {
-            if (++cacheUpdateCounter >= cacheUpdateThreshold)
+            if (configUpdateToken)
             {
                 UpdateCachedActions();
-                cacheUpdateCounter = 0;
+                configUpdateToken = false;
             }
 
             if (!Input.anyKeyDown)
-            {
                 return;
-            }
 
             foreach (IKatieActionBase action in cachedActiveActions)
             {
                 if (Input.GetKeyDown(action.Key))
                 {
-                    MelonLogger.Msg($"'{action.DisplayName}' key pressed");
+                    KatieLogger.Info($"'{action.DisplayName}' key pressed");
                     action.Run();
                     return;
                 }
             }
-        }
-
-        public static void setTransition(Transition transition)
-        {
-            customTransition = transition.Copy();
         }
 
         private static void UpdateCachedActions()
@@ -71,5 +68,17 @@ namespace KatieSaveHelper
             cachedActiveActions = KatieSaveHelperModConfig.allActiveActions.ToList();
         }
 
+        private void NotifyOnUpdate()
+        {
+            configUpdateToken = true;
+        }
+
+    }
+
+    internal static class KatieLogger
+    {
+        public static readonly Action<string> Info = (message) => MelonLogger.Msg(message);
+        public static readonly Action<string> Warning = (message) => MelonLogger.Warning(message);
+        public static readonly Action<string> Error = (message) => MelonLogger.Error(message);
     }
 }
