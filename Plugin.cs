@@ -6,45 +6,51 @@ using JoelG.ENA4;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace KatieSaveHelper
 {
     [BepInPlugin(modGUID, modName, modVersion)]
     public class KatieSaveHelperMod : BaseUnityPlugin
     {
-        private const string modGUID = "Zieraell.KatieSaveHelper";
-        private const string modName = "Katie Save Helper";
-        private const string modVersion = "1.0.7.0";
-        private const string modAuthors = "Katelyndev0211 and Zieraell";
-
-        internal static KatieSaveHelperMod Instance;
-
-        internal static bool forceCustomSeedOnReset = false;
-        internal static bool forceCustomSeedOnLoad = false;
-        internal static bool forceCustomTransition = false;
-        internal static int customSeed;
-        internal static Transition customTransition = new Transition(SceneChanger.TransitionType.FadeToColor, Color.black, 0, 0);
-        internal static bool allowSave = false;
+        internal const string modGUID = "Zieraell.KatieSaveHelper";
+        internal const string modName = "Katie Save Helper";
+        internal const string modVersion = "1.0.8.0";
+        internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         private readonly Harmony harmony = new Harmony(modGUID);
 
+        internal static KatieSaveHelperMod Instance;
+
         private static List<IKatieActionBase> cachedActiveActions = new List<IKatieActionBase>();
 
-        internal static ManualLogSource mls;
+        public static ManualLogSource mls;
 
-        private const int cacheUpdateThreshold = 100;
-        private int cacheUpdateCounter = 0;
+        private bool configUpdateToken = false;
 
         void Awake()
         {
+            // Set up logger
             if (Instance == null)
                 Instance = this;
-
             mls = Logger;
+
+            // Subscribe to config loads
+            KatieSaveHelperModConfig.OnConfigLoaded += NotifyOnUpdate;
 
             KatieSaveHelperModConfig.LoadConfig();
 
+            // Apply harmony patches
             harmony.PatchAll();
+
+            // Set up scene load events
+            OnSceneLoadPatch.ApplyStartupPatches();
+
+            // Set default toggle settings
+            KatieSaveHelperModActions.autoSaveDisabled = KatieSaveHelperModConfig.autoSaveDisabledByDefault.Value;
+
+            // Sync assets folder with repo
+            KatieAssetHandler.OnStartup();
 
             mls.LogInfo($"{modName} loaded.");
             mls.LogInfo($"Mod by {modAuthors}");
@@ -52,36 +58,41 @@ namespace KatieSaveHelper
 
         void Update()
         {
-            if (++cacheUpdateCounter >= cacheUpdateThreshold)
+            if (configUpdateToken)
             {
                 UpdateCachedActions();
-                cacheUpdateCounter = 0;
+                configUpdateToken = false;
             }
 
             if (!Input.anyKeyDown)
-            {
                 return;
-            }
 
             foreach (IKatieActionBase action in cachedActiveActions)
             {
                 if (Input.GetKeyDown(action.Key))
                 {
-                    mls.LogInfo($"'{action.DisplayName}' key pressed");
+                    KatieLogger.Info($"'{action.DisplayName}' key pressed");
                     action.Run();
                     return;
                 }
             }
         }
 
-        public static void setTransition(Transition transition)
-        {
-            customTransition = transition.Copy();
-        }
-
         private static void UpdateCachedActions()
         {
             cachedActiveActions = KatieSaveHelperModConfig.allActiveActions.ToList();
         }
+
+        private void NotifyOnUpdate()
+        {
+            configUpdateToken = true;
+        }
+    }
+
+    internal static class KatieLogger
+    {
+        public static readonly Action<string> Info = (message) => KatieSaveHelperMod.mls.LogInfo(message);
+        public static readonly Action<string> Warning = (message) => KatieSaveHelperMod.mls.LogWarning(message);
+        public static readonly Action<string> Error = (message) => KatieSaveHelperMod.mls.LogError(message);
     }
 }
