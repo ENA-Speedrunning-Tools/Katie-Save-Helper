@@ -101,10 +101,10 @@ Below are the various events the mod's *psuedo-randomizer* will target when gene
 #### Save Seed Mode
 
 * *FrankDoor_Target* : Which doors in the lost village will be knockable
-    * Value can be 'Single', 'Multiple', or 'Any', the default value is 'Any'
+    * Values can be 'Single', 'Multiple', or 'Any', the default value is 'Any'
 
 * *TaxiHead_Target* : The name of the head that will be interactable when talking to the Taxi Driver
-    * Value can be 'Creisi' (blue head), 'Doom' (grey head), 'Socio' (human head), and 'Any', the default value is 'Socio'
+    * Values can be 'Creisi' (blue head), 'Doom' (grey head), 'Socio' (human head), and 'Any', the default value is 'Socio'
 
 * *PurgeGoals_Target* : The order of the room goals during the Purge Event Maze
     * Default value is '*RLRLRL'
@@ -136,8 +136,8 @@ Below are the various events the mod's *psuedo-randomizer* will target when gene
                 * If the entry was '![WanderingFish, ManyFishFlipped]', the specified generated room **must not** contain **either** the *WanderingFish* **or** *ManyFishFlipped* obstacle
             * Finally, when an entry is simply the word 'Any', this represents an **'any'** condition, which doesn't perform any obstacle checks on the specific generated room
         * By default, **each set of three entries** represents a condition for the rooms immediately to the **left, forward, and right** of each generated room, respectively
-            * For example, setting *TargetPurgeObstacles* to 'FishStruggle, FishStruggle, FishStruggle' will have the *psuedo-randomizer* search for seeds where **every door** from the **spawn room** in the Purge Event will lead to a room with the *FishStruggle* obstacle
-            * Setting *TargetPurgeObstacles* to 'Any, Any, Any, FishChain, FishChain, FishChain' will have the *psuedo-randomizer* search for seeds where **every door** from the **second room you walk in** will lead to a room with the *FishChain* obstacle
+            * For example, setting *PurgeObstacles_Target* to 'FishStruggle, FishStruggle, FishStruggle' will have the *psuedo-randomizer* search for seeds where **every door** from the **spawn room** in the Purge Event will lead to a room with the *FishStruggle* obstacle
+            * Setting *PurgeObstacles_Target* to 'Any, Any, Any, FishChain, FishChain, FishChain' will have the *psuedo-randomizer* search for seeds where **every door** from the **second room you walk in** will lead to a room with the *FishChain* obstacle
             * The list can have as many **sets of three** condition entries as you like, but as the list grows longer and more specific, it will become exponentially harder for the *psuedo-randomizer* to find a valid seed
         * When '\*' is placed at the start of the setting input, the list converts to using a more **shorthand format**, where each entry only represents a condition for the desired obstacle in the **goal direction** for each room, specified in *PurgeGoals_Target*
             * For example, 'Any, FishStruggle, Any' could be shortened to '*FishStruggle', because the first **goal direction** is always **forward**, regardless of seed
@@ -176,15 +176,15 @@ Below are the various events the mod's *psuedo-randomizer* will target when gene
 #### Hardware Seed Mode
 
 * *EnaTaxiMood_Target* : Which side of ENA will talk during the second dialogue line of the first Taxi Driver interaction
-    * Value can be 'Meanie' or 'Salesman', the default value is 'Meanie'
+    * Values can be 'Meanie' or 'Salesman', the default value is 'Meanie'
 
 #### General Settings
 
 * *NaturalSeedsOnly* : Whether the mod's psuedo-randomizer should exclusively generate seeds the game itself can naturally generate
-    * Value can be 'true' and 'false', the default value is 'true'
+    * Values can be 'true' and 'false', the default value is 'true'
     * When set to 'true', only positive seed values can be generated. When set to 'false', both positive and negative seed values can be generated
 * *SearchAttemptLimit* : Maximum number of attempts the psuedo-randomizer will make to find a matching seed before quitting
-    * Value can be any integer, the default value is '1000000'
+    * Values can be any integer, the default value is '1000000'
 
 </details>
 
@@ -276,11 +276,11 @@ Options to modify the scene change transition for each of the mod's hotkey actio
 The following options will not impact the respective transition if it's type is set to 'Immediate'
 
 * *TransitionColor* : Color the transition will fade into and out of
-    * Value can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
+    * Values can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
     * The default color value for transitions is black, or '#000000'
 
 * *TransitionFadeInTime* : The duration of the fade-in effect of the transition (in seconds)
-    * Value can be any float (ex. 0.5, 1.0, 1.05), the default value is '0.5'
+    * Values can be any float (ex. 0.5, 1.0, 1.05), the default value is '0.5'
 * *TransitionFadeOutTime* : The duration of the fade-out effect of the transition (in seconds)
     * Same value format as above, the default value is '0.5'
 
@@ -311,7 +311,7 @@ Options to modify the on-screen toast notifications that are triggered by certai
 * *Toast_FontSize* : The font size toasts should use
     * Values can be any integer above 0, the default value is '36'
 * *Toast_FontColor* : The font color toasts should use
-    * Value can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
+    * Values can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
     * The default color value for toast fonts is white, or '#FFFFFF'
 * *Toast_ScreenPosition* : Where on the screen the toast should be positioned
     * The default value is 'TopRight'
@@ -323,21 +323,21 @@ Options to modify the on-screen toast notifications that are triggered by certai
     * Values can be any integer between 0 and 100, the default value is '5'
     * Setting the value to '0' will not render any outline on the toast
 * *Toast_OutlineColor* : The font outline color the toast should use
-    * Value can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
+    * Values can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
     * The default color value for toast outlines is black, or '#000000'
 * *Toast_Opacity* : The opacity of the text the toast should use
-    * Value can be any integer between 0 and 100, the default value is '100'
+    * Values can be any integer between 0 and 100, the default value is '100'
     * Setting the value to '0' will make the text fully transparent
 
 #### Timings
 
 * *Toast_FadeInTime* : The amount of time it takes for the toast to fade-in (in seconds)
-    * Value can be any float 0 or above, the default value is '0.25'
+    * Values can be any float 0 or above, the default value is '0.25'
 * *Toast_FadeOutTime* : The amount of time it takes for the toast to fade-out (in seconds)
-    * Value can be any float 0 or above, the default value is '0.25'
+    * Values can be any float 0 or above, the default value is '0.25'
 * *Toast_HoldTime* : The amount of time the toast will remain on the screen after fully fading-in before starting to fade-out (in seconds)
-    * Value can be any float 0 or above, the default value is '1.50'
+    * Values can be any float 0 or above, the default value is '1.50'
 * *Toast_GapTime* : The amount of time to wait after a toast fully fades out before displaying another toast (in seconds)
-    * Value can be any float 0 or above, the default value is '0.25'
+    * Values can be any float 0 or above, the default value is '0.25'
 
 </details>
