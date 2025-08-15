@@ -36,9 +36,9 @@ namespace KatieSaveHelper
 
         public static void OnStartup()
         {
-            TryCreateDefaultAssetDir();
             if (KatieSaveHelperModConfig.assetSubcriber.Value)
-                _ = SyncAssetsAsync();
+                _ = SyncAssetsAsync(assetUpdateOverride: !Directory.Exists(assetDir));
+            TryCreateDefaultAssetDir();
         }
 
         private static bool CanWriteHere(string dir, bool cleanAfter = true)
@@ -124,7 +124,7 @@ namespace KatieSaveHelper
             }
         }
 
-        public static async Task<int> SyncAssetsAsync()
+        public static async Task<int> SyncAssetsAsync(bool assetUpdateOverride = false)
         {
             isSyncing = true;
 
@@ -143,7 +143,7 @@ namespace KatieSaveHelper
 
                 string cachedSha = File.Exists(updateCacheFile) ? File.ReadAllText(updateCacheFile) : null;
 
-                if (latestSha == cachedSha && Directory.Exists(assetDir))
+                if (latestSha == cachedSha && Directory.Exists(assetDir) && !assetUpdateOverride)
                 {
                     KatieLogger.Info($"Assets already up-to-date ({latestSha.Substring(0, 7)})");
                     return 1;

@@ -18,7 +18,7 @@ In the same folder, you can edit the `Zieraell.KatieSaveHelper.cfg` file to conf
 
 Drag the MelonLoader version of the latest mod `.dll` file into the `Mods` folder
 
-To configure the mod, find and edit the `[KatieSaveHelper]` section in `UserData/MelonPreferences.cfg`
+To configure the mod, find and edit the `[KatieSaveHelper]` section in the `UserData/MelonPreferences.cfg` file
 
 ## Settings
 
@@ -68,7 +68,7 @@ Options to tweak the game's vanilla functionality
     * Values can be 'true' and 'false', the default value is false
 * *DisableCreateSavePopup* : Whether the mod should disable the confirmation window being displayed when creating a new save using the in-game Main Menu
     * Values can be 'true' and 'false', the default value is false
-* *DisableResetSavePopup* : "Whether the mod should disable the confirmation window being displayed when resetting an existing save using the in-game Main Menu window being displayed when creating a new save using the in-game Main Menu
+* *DisableResetSavePopup* : "Whether the mod should disable the confirmation window being displayed when resetting an existing save using the in-game Main Menu
     * Values can be 'true' and 'false', the default value is false
 
 #### Save Files
@@ -101,10 +101,10 @@ Below are the various events the mod's *psuedo-randomizer* will target when gene
 #### Save Seed Mode
 
 * *FrankDoor_Target* : Which doors in the lost village will be knockable
-    * Values can be 'Single', 'Multiple', or 'Any', the default value is 'Any'
+    * Value can be 'Single', 'Multiple', or 'Any', the default value is 'Any'
 
 * *TaxiHead_Target* : The name of the head that will be interactable when talking to the Taxi Driver
-    * Values can be 'Creisi' (blue head), 'Doom' (grey head), 'Socio' (human head), and 'Any', the default value is 'Socio'
+    * Value can be 'Creisi' (blue head), 'Doom' (grey head), 'Socio' (human head), and 'Any', the default value is 'Socio'
 
 * *PurgeGoals_Target* : The order of the room goals during the Purge Event Maze
     * Default value is '*RLRLRL'
@@ -176,14 +176,15 @@ Below are the various events the mod's *psuedo-randomizer* will target when gene
 #### Hardware Seed Mode
 
 * *EnaTaxiMood_Target* : Which side of ENA will talk during the second dialogue line of the first Taxi Driver interaction
-    * Values can be 'Meanie' or 'Salesman', the default value is 'Meanie'
+    * Value can be 'Meanie' or 'Salesman', the default value is 'Meanie'
 
 #### General Settings
 
-* *NaturalSeedsOnly* : Whether the mod's psuedo-randomizer should exclusively generate seeds the game itself can naturally generate. Basically, this let's the game use negative seed values
-    * Values can be 'true' and 'false', the default value is 'true'
+* *NaturalSeedsOnly* : Whether the mod's psuedo-randomizer should exclusively generate seeds the game itself can naturally generate
+    * Value can be 'true' and 'false', the default value is 'true'
+    * When set to 'true', only positive seed values can be generated. When set to 'false', both positive and negative seed values can be generated
 * *SearchAttemptLimit* : Maximum number of attempts the psuedo-randomizer will make to find a matching seed before quitting
-    * Values can be any integer, the default value is '1000000'
+    * Value can be any integer, the default value is '1000000'
 
 </details>
 
@@ -324,6 +325,9 @@ Options to modify the on-screen toast notifications that are triggered by certai
 * *Toast_OutlineColor* : The font outline color the toast should use
     * Value can be any hex code, it can be in either RGB (ex. #RRGGBB) or RGBA (ex. #RRGGBBAA) format
     * The default color value for toast outlines is black, or '#000000'
+* *Toast_Opacity* : The opacity of the text the toast should use
+    * Value can be any integer between 0 and 100, the default value is '100'
+    * Setting the value to '0' will make the text fully transparent
 
 #### Timings
 
