@@ -42,8 +42,13 @@ namespace KatieSaveHelper
 
         [HarmonyPatch("ReadFile")]
         [HarmonyPrefix]
-        public static bool ReadFile_Prefix(GameFile<SaveFileData> __instance, ref bool __result)
+        public static bool ReadFile_Prefix(object __instance, ref bool __result)
         {
+            if (__instance.GetType() != typeof(GameFile<SaveFileData>)) // :P
+                return true;
+
+            var instance = (GameFile<SaveFileData>)__instance;
+
             object[] parameters = new object[] { null };
             bool peekResult = (bool)peekFileMethod.Invoke(__instance, parameters);
 
@@ -55,12 +60,12 @@ namespace KatieSaveHelper
 
             SaveFileData data = (SaveFileData)parameters[0];
 
-            __instance.Data = data;
-            __instance.ValidData = true;
-            __instance.UpdateFileSyncTime();
+            instance.Data = data;
+            instance.ValidData = true;
+            instance.UpdateFileSyncTime();
 
             var fileReadDelegate = fileReadField.GetValue(__instance) as Action<GameFile<SaveFileData>>;
-            fileReadDelegate?.Invoke(__instance);
+            fileReadDelegate?.Invoke(instance);
 
             __result = true;
             return false;
