@@ -2,8 +2,10 @@
 using JoelG.ENA4;
 using LMirman.Utilities;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+
 
 namespace KatieSaveHelper
 {
@@ -45,7 +47,7 @@ namespace KatieSaveHelper
         {
             object[] parameters = new object[] { null };
             bool peekResult = (bool)peekFileMethod.Invoke(__instance, parameters);
-            
+
             if (!peekResult)
             {
                 __result = false;
@@ -93,6 +95,44 @@ namespace KatieSaveHelper
 
             __result = true;
             return false;
+        }
+
+        // Prevent the game from automatically overwritting pre-existing save data on disk with Steam Remote Storage save data on launch
+
+        [HarmonyPatch("WriteFile", new Type[] { })]
+        [HarmonyPrefix]
+        public static bool WriteFile_Prefix(object __instance)
+        {
+            if (!(__instance.GetType().IsGenericType && __instance.GetType().GetGenericTypeDefinition() == typeof(RemoteGameFile<>)) || KatieSaveHelperModConfig.disableRemoteSaveSync.Value == false)
+                return true;
+
+            var stackTrace = new StackTrace();
+            var frames = stackTrace.GetFrames();
+
+            if (frames == null)
+                return true;
+
+            foreach (var frame in frames)
+            {
+                var method = frame.GetMethod();
+                if (method == null) continue;
+
+                if (method.DeclaringType.IsGenericType && method.DeclaringType.GetGenericTypeDefinition() == typeof(RemoteGameFile<>) && method.Name.Contains("::MigrateSaveFromRemote>"))
+                    return false;
+            }
+
+            return true;
+        }
+
+        // This patch is just to force one of the methods mentioned just above to show up in the stack trace
+
+        [HarmonyPatch(typeof(RemoteGameFile<SaveFileData>), nameof(RemoteGameFile<SaveFileData>.MigrateSaveFromRemote))]
+        public static class RemoteGameFile_Patch
+        {
+            public static bool Prefix()
+            {
+                return true;
+            }
         }
     }
 }

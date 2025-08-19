@@ -372,6 +372,7 @@ namespace KatieSaveHelper
         internal static KatieSetting<bool> disableResetSavePopup = new KatieSetting<bool>("Disable Reset Save Popup", false);
         internal static KatieSetting<bool> disableSaveFileLockAfterCompletion = new KatieSetting<bool>("Disable Save File Lock After Completion", false);
         internal static KatieSetting<bool> disableSaveFileEncryption = new KatieSetting<bool>("Disable Save File Encryption", false);
+        internal static KatieSetting<bool> disableRemoteSaveSync = new KatieSetting<bool>("Disable Steam Remote Save Sync", false);
 
         internal static KatieSetting<bool> psuedoRandomNaturalSeedsOnly = new KatieSetting<bool>("Psuedo Randomizer Generate Natural Seeds Only", "PsuedoRandomizer_General_GenerateNaturalSeedsOnly" , true);
         internal static KatieSetting<int> psuedoRandomMaxAttempts = new KatieSetting<int>("Psuedo Randomizer Search Attempt Limit", "PsuedoRandomizer_General_SearchAttemptLimit", 1000000);
@@ -492,6 +493,7 @@ namespace KatieSaveHelper
             disableResetSavePopup.CreateValueConfigEntry("Whether the mod should disable the confirmation window being displayed when resetting an existing save using the in-game Main Menu");
             disableSaveFileLockAfterCompletion.CreateValueConfigEntry("Whether the mod should disable save files becoming locked after being completed");
             disableSaveFileEncryption.CreateValueConfigEntry("Whether the mod should prevent the game from encrypting save files when they are updated");
+            disableRemoteSaveSync.CreateValueConfigEntry("Whether the mod should prevent the game from overwriting existing save files with backups from Steam Remote Storage on launch");
 
             psuedoRandomTargetFrankDoor.CreateValueConfigEntry("Whether a single door or multiple doors in the Lost Village will be knockable");
             psuedoRandomTargetTaxiHead.CreateValueConfigEntry("Name of the Taxi Head that the mod's psuedo-randomizer will target when generating a new seed");

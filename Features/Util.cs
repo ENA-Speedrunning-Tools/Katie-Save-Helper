@@ -205,12 +205,12 @@ namespace KatieSaveHelper
 
         // Save file stuff
 
-        public static RemoteGameFile<SaveFileData> ReadGameFile(int index)
+        public static GameFile<SaveFileData> ReadGameFile(int index)
         {
             int clampedIndex = ClampIndex(index);
-            RemoteGameFile<SaveFileData> remoteGameFile = new RemoteGameFile<SaveFileData>(GetSaveName(clampedIndex), Encryption.DefaultEncryptor, GameFile<SaveFileData>.FileType.Encrypted);
-            remoteGameFile.ReadFile();
-            return remoteGameFile;
+            GameFile<SaveFileData> gameFile = new GameFile<SaveFileData>(GetSaveName(clampedIndex), Encryption.DefaultEncryptor, GameFile<SaveFileData>.FileType.Encrypted);
+            gameFile.ReadFile();
+            return gameFile;
         }
 
         public static string GetSaveName(int index)

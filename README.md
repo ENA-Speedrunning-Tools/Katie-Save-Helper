@@ -6,19 +6,25 @@ This is a mod for **ENA: Dream BBQ** that allows manipulating the currently load
 
 ***Credit goes to @Birbkeks for making the default ENA font `.ttf` file***
 
-### How to Install on [BepInEx](https://github.com/BepInEx/BepInEx/releases/latest)
+## How to Install
 
-Drag the BepInEx version of the latest mod `.dll` file into the `BepInEx/plugins` folder
+There are two supported mod loaders, follow the instructions for the one you are using.
 
-In the `BepInEx/config` folder, find and open the `BepInEx.cfg` file, and make sure the `HideManagerGameObject` setting under the `[Chainloader]` section is set to ***true*** 
+### [BepInEx](https://github.com/BepInEx/BepInEx/releases/latest)
 
-In the same folder, you can edit the `Zieraell.KatieSaveHelper.cfg` file to configure the mod
+Drag the **BepInEx** version of the latest mod `.dll` file into the `BepInEx/plugins` folder
 
-### How to Install on [MelonLoader](https://github.com/LavaGang/MelonLoader/releases/latest)
+In the `BepInEx/config` folder, find and open your `BepInEx.cfg` file, and make sure the `HideManagerGameObject` setting under the `[Chainloader]` section is set to ***'true'***. *This is required for the mod to work properly.*
 
-Drag the MelonLoader version of the latest mod `.dll` file into the `Mods` folder
+I also highly reccomend enabling the *logging console* for more real time feedback from the mod. This can be done by changing the `Enabled` setting under the `[Logging.Console]` section to ***'true'***.
 
-To configure the mod, find and edit the `[KatieSaveHelper]` section in the `UserData/MelonPreferences.cfg` file
+In the same folder, you can edit the `Zieraell.KatieSaveHelper.cfg` file to configure the mod after launching the game once.
+
+### [MelonLoader](https://github.com/LavaGang/MelonLoader/releases/latest)
+
+Drag the **MelonLoader** version of the latest mod `.dll` file into the `Mods` folder
+
+To configure the mod, find and edit the `[KatieSaveHelper]` section in your `UserData/MelonPreferences.cfg` file after launching the game once.
 
 ## Settings
 
@@ -77,8 +83,11 @@ Options to tweak the game's vanilla functionality
     * Values can be 'true' and 'false', the default value is 'false'
 * *DisableSaveFileEncryption* : Whether the mod should prevent the game from encrypting save files when they are updated
     * Values can be 'true' and 'false', the default value is 'false'
-    * When this setting is set to 'true', already encrypted save files will be un-encrypted the next time they are saved to. When set to 'false', un-encrypted save files will be re-encrypted when they are saved to.
+    * When this setting is set to 'true', already encrypted save files will be un-encrypted the next time they are updated. When set to 'false', un-encrypted save files will be re-encrypted when they are updated
     * The game itself does not normally support loading un-encrypted save files, so this behavior is handled by the mod. Un-encrypted save files will not be loaded properly without this mod present
+* *DisableSteamRemoteSaveSync* : Whether the mod should prevent the game from overwriting existing save files with backups from *Steam Remote Storage* on launch
+    * Values can be 'true' and 'false', the default value is 'false'
+    * Even if you have *Steam Cloud* disabled, the game will still regularly write save file updates to a local folder on your device that is managed by *Steam*, referred to as *Remote Storage*. Disabling *Steam Cloud* only prevents the save files in your *Remote Storage* from being backed up on *Steam*'s servers, it will not prevent the game from overwriting your save files with them on launch
 
 #### Gameplay
 
