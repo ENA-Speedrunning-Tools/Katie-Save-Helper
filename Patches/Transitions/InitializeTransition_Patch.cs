@@ -2,7 +2,7 @@
 using HarmonyLib;
 using UnityEngine;
 
-namespace KatieSaveHelper.Patches.Transitions
+namespace KatieSaveHelper.Patches
 {
     // Slightly reduce the 'sorting order' of a fade transition's canvas component to allow other UI elements to overlay on top of it
 

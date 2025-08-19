@@ -1,10 +1,8 @@
 ﻿using JoelG.ENA4;
-using JoelG.ENA4.UI.HUD.Dialogue;
 using KatieSaveHelper.Patches;
-using System;
-using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.SceneManagement;
+using LMirman.Utilities;
+using System;
 
 namespace KatieSaveHelper
 {
@@ -50,7 +48,19 @@ namespace KatieSaveHelper
         public static void logCurrentSeedInfo()
         {
             int currentSaveIndex = MetaSaveFile.Current.SaveIndex;
-            int currentSaveFileHash = KatieUtil.ReadGameFile(currentSaveIndex).Data.SaveHash;
+            int currentSaveFileHash;
+            bool fileSuccess;
+            try
+            {
+                var ganeFile = KatieUtil.ReadGameFile(currentSaveIndex);
+                currentSaveFileHash = ganeFile.Data.SaveHash;
+                fileSuccess = true;
+            }
+            catch (Exception ex)
+            {
+                currentSaveFileHash = 0;
+                fileSuccess = false;
+            }
 
             int playSessionHash = SaveRandomizerHashes.GetHashByType(SaveRandomizerHashes.HashType.PlaySession);
             int hardwareHash = SaveRandomizerHashes.GetHashByType(SaveRandomizerHashes.HashType.Hardware);
@@ -61,7 +71,7 @@ namespace KatieSaveHelper
 
             KatieLogger.Info($"Current Seeds:" +
                 $"\n\tActive Save Seed: {saveHash}" +
-                $"\n\tSlot {currentSaveIndex + 1} File Save Seed: {currentSaveFileHash}" +
+                $"\n\tSlot {currentSaveIndex + 1} File Save Seed: {(fileSuccess ? currentSaveFileHash.ToString() : "File Not Found.")}" +
                 $"\n\tActive Session Seed: {playSessionHash}" +
                 $"\n\tActive Hardware Seed: {hardwareHash}");
 
@@ -273,7 +283,7 @@ namespace KatieSaveHelper
 
             ToastController.TryQueueToast("Resetting Save using File seed");
 
-            RemoteGameFile<SaveFileData> gameFile = KatieUtil.ReadGameFile(MetaSaveFile.Current.SaveIndex);
+            GameFile<SaveFileData> gameFile = KatieUtil.ReadGameFile(MetaSaveFile.Current.SaveIndex);
 
             customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithFileSeed.Transition.Copy());
 

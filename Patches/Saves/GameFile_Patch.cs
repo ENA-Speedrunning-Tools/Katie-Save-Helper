@@ -2,12 +2,13 @@
 using JoelG.ENA4;
 using LMirman.Utilities;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
 namespace KatieSaveHelper
 {
-    
+
     [HarmonyPatch(typeof(GameFile<SaveFileData>))]
     public static class GameFile_Patch
     {
@@ -44,7 +45,7 @@ namespace KatieSaveHelper
         [HarmonyPrefix]
         public static bool ReadFile_Prefix(object __instance, ref bool __result)
         {
-            if (__instance.GetType() != typeof(GameFile<SaveFileData>)) // :P
+            if (__instance.GetType() != typeof(GameFile<SaveFileData>))
                 return true;
 
             var instance = (GameFile<SaveFileData>)__instance;
@@ -75,8 +76,13 @@ namespace KatieSaveHelper
 
         [HarmonyPatch("PeekFile")]
         [HarmonyPrefix]
-        public static bool PeekFile_Patch(GameFile<SaveFileData> __instance, ref SaveFileData data, ref bool __result)
+        public static bool PeekFile_Patch(object __instance, ref SaveFileData data, ref bool __result)
         {
+            if (__instance.GetType() != typeof(GameFile<SaveFileData>))
+                return true;
+
+            var instance = (GameFile<SaveFileData>)__instance;
+
             string dataPath = (string)dataPathField.GetValue(__instance);
 
             if (!File.Exists(dataPath))
@@ -90,15 +96,53 @@ namespace KatieSaveHelper
 
             try
             {
-                data = __instance.GetDataFromEncryptedByteArray(bytes);
+                data = instance.GetDataFromEncryptedByteArray(bytes);
             }
             catch
             {
-                data = __instance.GetDataFromJsonByteArray(bytes);
+                data = instance.GetDataFromJsonByteArray(bytes);
             }
 
             __result = true;
             return false;
+        }
+
+        // Prevent the game from automatically overwritting pre-existing save data on disk with Steam Remote Storage save data on launch
+
+        [HarmonyPatch("WriteFile", new Type[] { })]
+        [HarmonyPrefix]
+        public static bool WriteFile_Prefix(object __instance)
+        {
+            if (!(__instance.GetType().IsGenericType && __instance.GetType().GetGenericTypeDefinition() == typeof(RemoteGameFile<>)) || KatieSaveHelperModConfig.disableRemoteSaveSync.Value == false)
+                return true;
+
+            var stackTrace = new StackTrace();
+            var frames = stackTrace.GetFrames();
+
+            if (frames == null)
+                return true;
+
+            foreach (var frame in frames)
+            {
+                var method = frame.GetMethod();
+                if (method == null) continue;
+
+                if (method.DeclaringType.IsGenericType && method.DeclaringType.GetGenericTypeDefinition() == typeof(RemoteGameFile<>) && method.Name.Contains("::MigrateSaveFromRemote>"))
+                    return false;
+            }
+
+            return true;
+        }
+
+        // This patch is just to force one of the methods mentioned just above to show up in the stack trace
+
+        [HarmonyPatch(typeof(RemoteGameFile<SaveFileData>), nameof(RemoteGameFile<SaveFileData>.MigrateSaveFromRemote))]
+        public static class RemoteGameFile_Patch
+        {
+            public static bool Prefix()
+            {
+                return true;
+            }
         }
     }
 }
