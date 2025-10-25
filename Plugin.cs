@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Diagnostics;
 
 [assembly: MelonInfo(typeof(KatieSaveHelper.KatieSaveHelperMod), "Katie Save Helper", "1.0.8", "Katelyndev0211 and Zieraell")]
 
@@ -12,10 +13,10 @@ namespace KatieSaveHelper
     {
         internal const string modGUID = "Zieraell.KatieSaveHelper";
         internal const string modName = "Katie Save Helper";
-        internal const string modVersion = "1.8.3.0";
+        internal const string modVersion = "1.8.4.0";
         internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
-        private readonly HarmonyLib.Harmony harmony = new HarmonyLib.Harmony(modGUID);
+        internal static readonly HarmonyLib.Harmony harmony = new HarmonyLib.Harmony(modGUID);
 
         private static List<IKatieActionBase> cachedActiveActions = new List<IKatieActionBase>();
 
@@ -23,6 +24,8 @@ namespace KatieSaveHelper
 
         public override void OnInitializeMelon()
         {
+            Application.logMessageReceived += OnLog;
+
             // Subscribe to config loads
             KatieSaveHelperModConfig.OnConfigLoaded += NotifyOnUpdate;
 
@@ -39,6 +42,16 @@ namespace KatieSaveHelper
 
             KatieLogger.Info($"{modName} loaded.");
             KatieLogger.Info($"Mod by {modAuthors}");
+        }
+
+        private void OnLog(string condition, string stackTrace, LogType type)
+        {
+            if (condition.Contains("Running node"))
+            {
+                // Capture a stack trace from where the log was called
+                StackTrace st = new StackTrace(true); // true = capture file info if available
+                MelonLogger.Msg($"[NodeLogCatcher] Detected node log:\nMessage: {condition}\nCaptured StackTrace:\n{st}");
+            }
         }
 
         public override void OnUpdate()

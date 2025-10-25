@@ -28,7 +28,7 @@ namespace KatieSaveHelper
 
                 if (!filteredScenesList.Contains(sceneName))
                 {
-                    KatieUtil.ChangeScene(sceneName, transition: KatieSaveHelperModConfig.warpToNextScene.Transition, stopAudio: true);
+                    KatieUtil.ChangeScene(sceneName, transition: KatieSaveHelperModConfig.warpToNextScene.Transition, stopAudio: true, stopCutscenes: true);
                     return true;
                 }
 
@@ -54,7 +54,7 @@ namespace KatieSaveHelper
 
                 if (!filteredScenesList.Contains(sceneName))
                 {
-                    KatieUtil.ChangeScene(sceneName, transition: KatieSaveHelperModConfig.warpToPrevScene.Transition, stopAudio: true);
+                    KatieUtil.ChangeScene(sceneName, transition: KatieSaveHelperModConfig.warpToPrevScene.Transition, stopAudio: true, stopCutscenes: true);
                     return true;
                 }
 

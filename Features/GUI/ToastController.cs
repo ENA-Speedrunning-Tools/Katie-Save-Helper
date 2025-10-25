@@ -261,6 +261,12 @@ namespace KatieSaveHelper
             TryQueueToast(message);
         }
 
+        public static void TryQueueAndLogToast(ToastInstance toastInstance)
+        {
+            KatieLogger.Info(toastInstance.message);
+            TryQueueToast(toastInstance);
+        }
+
         IEnumerator PlayQueuedToasts()
         {
             while (queue.Count > 0)

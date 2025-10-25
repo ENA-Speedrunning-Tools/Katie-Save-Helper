@@ -7,7 +7,7 @@ namespace KatieSaveHelper.Patches
     // Insert custom psuedo-random seed into new save if the 'use psuedo random seed on new saves' option is enabled
 
     [HarmonyPatch(typeof(SaveFile), nameof(SaveFile.ResetSave))]
-    public class ResetSave_Patch
+    public static class ResetSave_Patch
     {
         private static readonly FieldInfo saveHashField = AccessTools.Field(typeof(SaveFileData), "saveHash");
         private static readonly MethodInfo getGameFileMethod = AccessTools.Method(typeof(SaveFile), "GetGameFile");

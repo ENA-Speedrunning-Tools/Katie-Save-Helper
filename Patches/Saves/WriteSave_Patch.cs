@@ -10,7 +10,7 @@ namespace KatieSaveHelper.Patches
     // Disable save writes not performed by the mod if the 'autosave disabled' option is turned on
 
     [HarmonyPatch(typeof(SaveFile), nameof(SaveFile.WriteSave))]
-    public class WriteSave_Patch
+    public static class WriteSave_Patch
     {
         private static readonly FieldInfo currentField = AccessTools.Field(typeof(SaveFile), "current");
         private static readonly FieldInfo currentFileSavedField = AccessTools.Field(typeof(SaveFile), "CurrentFileSaved");

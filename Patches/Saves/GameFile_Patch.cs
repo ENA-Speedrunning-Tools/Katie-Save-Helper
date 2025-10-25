@@ -6,8 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
-
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Patches
 {
     [HarmonyPatch(typeof(GameFile<SaveFileData>))]
     public static class GameFile_Patch
@@ -43,8 +42,13 @@ namespace KatieSaveHelper
 
         [HarmonyPatch("ReadFile")]
         [HarmonyPrefix]
-        public static bool ReadFile_Prefix(GameFile<SaveFileData> __instance, ref bool __result)
+        public static bool ReadFile_Prefix(object __instance, ref bool __result)
         {
+            if (!(__instance is GameFile<SaveFileData> gameFile))
+                return true;
+
+            var instance = (GameFile<SaveFileData>)__instance;
+
             object[] parameters = new object[] { null };
             bool peekResult = (bool)peekFileMethod.Invoke(__instance, parameters);
 
@@ -56,12 +60,12 @@ namespace KatieSaveHelper
 
             SaveFileData data = (SaveFileData)parameters[0];
 
-            __instance.Data = data;
-            __instance.ValidData = true;
-            __instance.UpdateFileSyncTime();
+            instance.Data = data;
+            instance.ValidData = true;
+            instance.UpdateFileSyncTime();
 
             var fileReadDelegate = fileReadField.GetValue(__instance) as Action<GameFile<SaveFileData>>;
-            fileReadDelegate?.Invoke(__instance);
+            fileReadDelegate?.Invoke(instance);
 
             __result = true;
             return false;
@@ -71,8 +75,13 @@ namespace KatieSaveHelper
 
         [HarmonyPatch("PeekFile")]
         [HarmonyPrefix]
-        public static bool PeekFile_Patch(GameFile<SaveFileData> __instance, ref SaveFileData data, ref bool __result)
+        public static bool PeekFile_Patch(object __instance, ref SaveFileData data, ref bool __result)
         {
+            if (!(__instance is GameFile<SaveFileData> gameFile))
+                return true;
+  
+            var instance = (GameFile<SaveFileData>)__instance;
+
             string dataPath = (string)dataPathField.GetValue(__instance);
 
             if (!File.Exists(dataPath))
@@ -86,18 +95,18 @@ namespace KatieSaveHelper
 
             try
             {
-                data = __instance.GetDataFromEncryptedByteArray(bytes);
+                data = instance.GetDataFromEncryptedByteArray(bytes);
             }
             catch
             {
-                data = __instance.GetDataFromJsonByteArray(bytes);
+                data = instance.GetDataFromJsonByteArray(bytes);
             }
 
             __result = true;
             return false;
         }
 
-        // Prevent the game from automatically overwritting pre-existing save data on disk with Steam Remote Storage save data on launch
+        // Prevent the game from automatically overwritting pre-existing save data on disk with Steam Remote Storage save data on launch, if configured by the mod
 
         [HarmonyPatch("WriteFile", new Type[] { })]
         [HarmonyPrefix]

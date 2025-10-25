@@ -3,6 +3,9 @@ using KatieSaveHelper.Patches;
 using UnityEngine.SceneManagement;
 using LMirman.Utilities;
 using System;
+using JoelG.ENA4.UI;
+using UnityEngine;
+using JoelG.ENA4.Audio;
 
 namespace KatieSaveHelper
 {
@@ -110,7 +113,7 @@ namespace KatieSaveHelper
 
             customMainMenuPanelOnLoad.StageValue(MainMenuPanelType.FileSelect);
 
-            KatieUtil.ChangeScene("Menu", KatieSaveHelperModConfig.exitToSaveSelect.Transition);
+            KatieUtil.ChangeScene("Menu", KatieSaveHelperModConfig.exitToSaveSelect.Transition, stopAudio: true, stopCutscenes: true);
         }
 
         public static void exitToSaveSelectAndEraseSave()
@@ -125,7 +128,7 @@ namespace KatieSaveHelper
 
             customMainMenuPanelOnLoad.StageValue(MainMenuPanelType.FileSelect);
 
-            KatieUtil.ChangeScene("Menu", KatieSaveHelperModConfig.exitToSaveSelectAndEraseSave.Transition);
+            KatieUtil.ChangeScene("Menu", KatieSaveHelperModConfig.exitToSaveSelectAndEraseSave.Transition, stopAudio: true, stopCutscenes: true);
         }
 
         public static void warpToNextScene()
@@ -217,6 +220,23 @@ namespace KatieSaveHelper
             ToastController.TryQueueToast("Blink Randomizer reset");
         }
 
+        public static void resetSimulatedAchievements()
+        {
+            if (KatieSaveHelperModConfig.resetSimulatedAchievements.Value != CustomEventType.OnHotkey)
+            {
+                ToastController.TryQueueAndLogToast("Hotkey for resetting Simulated Achievements is disabled");
+                return;
+            }
+
+            if (SceneManager.GetActiveScene().name != "Menu")
+            {
+                ToastController.TryQueueAndLogToast("Cannot reset Simulated Achievements outside Main Menu");
+                return;
+            }
+
+            Achievements_Patch.ResetSimulatedAchievements(showToast:true);
+        }
+
         public static void reloadSaveWithFileSeed()
         {
             if (SceneManager.GetActiveScene().name == "Menu")
@@ -226,6 +246,9 @@ namespace KatieSaveHelper
             }
 
             ToastController.TryQueueToast("Reloading save with File seed");
+
+            KatieUtil.StopAllCutscenes();
+            AudioPlayback.StopAllAudio();
 
             customTransition.StageValue(KatieSaveHelperModConfig.reloadSaveWithFileSeed.Transition.Copy());
 
@@ -241,6 +264,9 @@ namespace KatieSaveHelper
             }
 
             ToastController.TryQueueToast("Reloading Save using Current seed");
+
+            KatieUtil.StopAllCutscenes();
+            AudioPlayback.StopAllAudio();
 
             customTransition.StageValue(KatieSaveHelperModConfig.reloadSaveWithCurrentSeed.Transition.Copy());
 
@@ -268,6 +294,9 @@ namespace KatieSaveHelper
                 return;
             }
 
+            KatieUtil.StopAllCutscenes();
+            AudioPlayback.StopAllAudio();
+
             customSeedOnLoad.StageValue(seedTuple.seed);
 
             SaveFile.ContinueSave();
@@ -285,6 +314,9 @@ namespace KatieSaveHelper
 
             GameFile<SaveFileData> gameFile = KatieUtil.ReadGameFile(MetaSaveFile.Current.SaveIndex);
 
+            KatieUtil.StopAllCutscenes();
+            AudioPlayback.StopAllAudio();
+
             customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithFileSeed.Transition.Copy());
 
             customSeedOnReset.StageValue(gameFile.Data.SaveHash);
@@ -301,6 +333,9 @@ namespace KatieSaveHelper
             }
 
             ToastController.TryQueueToast("Resetting Save using Current seed");
+
+            KatieUtil.StopAllCutscenes();
+            AudioPlayback.StopAllAudio();
 
             customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithCurrentSeed.Transition.Copy());
 
@@ -326,6 +361,9 @@ namespace KatieSaveHelper
                 ToastController.TryQueueToast("Could not reset, no seed found");
                 return;
             }
+
+            KatieUtil.StopAllCutscenes();
+            AudioPlayback.StopAllAudio();
 
             customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithNewSeed.Transition.Copy());
 
