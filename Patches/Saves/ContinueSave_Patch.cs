@@ -2,7 +2,7 @@
 using JoelG.ENA4;
 using LMirman.VespaIO;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Patches
 {
     // If configured by the mod, disable save locking after game completion
 

@@ -79,6 +79,8 @@ Options to tweak the game's vanilla functionality
 
 #### Save Files
 
+* *DisableSaveSelectDelay* : Whether the mod should disable the small delay before the scene transition after selecting a save in the Main Menu
+    * Values can be 'true' and 'false', the default value is 'false'
 * *DisableSaveFileLockAfterCompletion* : Whether the mod should disable save files becoming locked after being completed
     * Values can be 'true' and 'false', the default value is 'false'
 * *DisableSaveFileEncryption* : Whether the mod should prevent the game from encrypting save files when they are updated
@@ -310,8 +312,17 @@ Options to modify the on-screen toast notifications that are triggered by certai
     * Values can be 'true' and 'false', the default value is 'false'
     * This is mainly required for the font outline on the 'RuneScape-ENA' font to function properly
     * On your first launch with the mod, a notification will appear in the Main Menu prompting if you would like to subscribe to asset updates. This will appear only once and will not be shown again.
+
+#### Event Triggers
+
 * *NotifyOnFirstBlinkAttempts* : Whether the mod should show display a toast notification when the game makes an internal blink attempt and the blink randomizer hasn't triggered a blink yet on it's current reset
     * Values can be 'true' and 'false', the default value is 'false'
+* *NotifyOnSimulatedAchievements* : Whether the mod should display a toast notification when the game internally triggers an achievement that isn't already in the mod's Simulated Achievements list
+    * Values can be 'true' and 'false', the default value is 'false'
+* *ResetSimulatedAchievements* : What will trigger the mod's internal Simulated Achievements list being reset
+    * Values can be 'OnLoadSave', 'OnCreateSave', 'OnLoadMainMenu', and 'OnHotkey'
+        * The 'ResetSimulatedAchievements' hotkey will be disabled unless this option is set to 'OnHotkey'
+
 
 #### Appearance
 
@@ -346,6 +357,8 @@ Options to modify the on-screen toast notifications that are triggered by certai
     * Values can be any float 0 or above, the default value is '0.25'
 * *Toast_HoldTime* : The amount of time the toast will remain on the screen after fully fading-in before starting to fade-out (in seconds)
     * Values can be any float 0 or above, the default value is '1.50'
+* *SimulatedAchievementToast_HoldTime* : How long Simulated Achievement toasts should remain on the screen before fading out
+    * Values can be any float 0 or above, the default value is '5.0'
 * *Toast_GapTime* : The amount of time to wait after a toast fully fades out before displaying another toast (in seconds)
     * Values can be any float 0 or above, the default value is '0.25'
 

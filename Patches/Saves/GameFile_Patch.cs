@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Patches
 {
 
     [HarmonyPatch(typeof(GameFile<SaveFileData>))]

@@ -10,7 +10,7 @@ namespace KatieSaveHelper.Patches
     // If performed by the mod, create a custom scene changer object for continuing the save
 
     [HarmonyPatch(typeof(SaveFileData), "ContinueGame")]
-    public class ContinueGame_Patch
+    public static class ContinueGame_Patch
     {
         private static readonly FieldInfo gameStateField = AccessTools.Field(typeof(SaveFileData), "gameState");
         private static readonly FieldInfo sessionTraversalHistoryField = AccessTools.Field(typeof(SaveFileData), "sessionTraversalHistory");

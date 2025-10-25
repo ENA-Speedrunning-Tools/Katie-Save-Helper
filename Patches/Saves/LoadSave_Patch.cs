@@ -9,7 +9,7 @@ namespace KatieSaveHelper.Patches
     // After a save is loaded, replace the loaded save seed with a custom one, if performed by the mod
 
     [HarmonyPatch(typeof(SaveFile), nameof(SaveFile.LoadSave))]
-    public class LoadSave_Patch
+    public static class LoadSave_Patch
     {
         private static readonly FieldInfo currentField = AccessTools.Field(typeof(SaveFile), "current");
         private static readonly FieldInfo eventField = AccessTools.Field(typeof(SaveFile), "CurrentFileLoaded");

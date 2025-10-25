@@ -369,6 +369,7 @@ namespace KatieSaveHelper
         internal static KatieSetting<bool> disableReturnToMainMenuPopup = new KatieSetting<bool>("Disable Return To Main Menu Popup", false);
         internal static KatieSetting<bool> disableCreateSavePopup = new KatieSetting<bool>("Disable Create Save Popup", false);
         internal static KatieSetting<bool> disableResetSavePopup = new KatieSetting<bool>("Disable Reset Save Popup", false);
+        internal static KatieSetting<bool> disableSaveSelectDelay = new KatieSetting<bool>("Disable Save Select Delay", false);
         internal static KatieSetting<bool> disableSaveFileLockAfterCompletion = new KatieSetting<bool>("Disable Save File Lock After Completion", false);
         internal static KatieSetting<bool> disableSaveFileEncryption = new KatieSetting<bool>("Disable Save File Encryption", false);
         internal static KatieSetting<bool> disableRemoteSaveSync = new KatieSetting<bool>("Disable Steam Remote Save Sync", false);
@@ -397,6 +398,9 @@ namespace KatieSaveHelper
         internal static KatieSetting<float> toastGapTime = new KatieSetting<float>("Toast Gap Time", "Toast_GapTime", 0.25f);
 
         internal static KatieSetting<bool> notifyOnFirstBlinkAttempts = new KatieSetting<bool>("Notify On First Blink Attempts", false);
+        internal static KatieSetting<bool> notifyOnSimulatedAchievements = new KatieSetting<bool>("Notify On Simulated Achievements", false);
+        internal static KatieSetting<float> simulatedAchievementToastHoldTime = new KatieSetting<float>("Simulated Achievement Toast Hold Time", "SimulatedAchievementToast_HoldTime", 5f);
+        internal static KatieSetting<CustomEventType> resetSimulatedAchievements = new KatieSetting<CustomEventType>("Reset Simulated Achievements", CustomEventType.OnHotkey);
         internal static KatieSetting<bool> logConfigOnReload = new KatieSetting<bool>("Log Config On Reload", true);
         internal static KatieSetting<bool> assetSubcriber = new KatieSetting<bool>("Subscribe To Asset Updates", false);
 
@@ -407,6 +411,7 @@ namespace KatieSaveHelper
         internal static KatieAction regenerateSessionSeedAction = new KatieAction("Regenerate Session Seed", KatieSaveHelperModActions.regenerateSessionSeed, KeyCode.None);
         internal static KatieAction regenerateHardwareSeedAction = new KatieAction("Regenerate Hardware Seed", KatieSaveHelperModActions.regenerateHardwareSeed, KeyCode.None);
         internal static KatieAction resetGameBlinkRandomizerAction = new KatieAction("Reset Game Blink Randomizer", KatieSaveHelperModActions.resetGameBlinkRandomizer, KeyCode.None);
+        internal static KatieAction resetSimulatedAchievementsAction = new KatieAction("Reset Simulated Achievements", KatieSaveHelperModActions.resetSimulatedAchievements, KeyCode.None);
 
         internal static readonly Transition defaultTransition = new Transition(SceneChanger.TransitionType.FadeToColor, Color.black, 0.5f, 0.5f);
 
@@ -488,6 +493,7 @@ namespace KatieSaveHelper
             disableReturnToMainMenuPopup.CreateValueConfigEntry("Whether the mod should disable the confirmation window being displayed when attempting to return to the Main Menu from the Pause Menu");
             disableCreateSavePopup.CreateValueConfigEntry("Whether the mod should disable the confirmation window being displayed when creating a new save using the in-game Main Menu");
             disableResetSavePopup.CreateValueConfigEntry("Whether the mod should disable the confirmation window being displayed when resetting an existing save using the in-game Main Menu");
+            disableSaveSelectDelay.CreateValueConfigEntry("Whether the mod should disable the small delay before the scene transition after selecting a save in the Main Menu");
             disableSaveFileLockAfterCompletion.CreateValueConfigEntry("Whether the mod should disable save files becoming locked after being completed");
             disableSaveFileEncryption.CreateValueConfigEntry("Whether the mod should prevent the game from encrypting save files when they are updated");
             disableRemoteSaveSync.CreateValueConfigEntry("Whether the mod should prevent the game from overwriting existing save files with backups from Steam Remote Storage on launch");
@@ -504,6 +510,9 @@ namespace KatieSaveHelper
 
             showToasts.CreateValueConfigEntry("Whether the mod should display a toast notification on the screen when performing the mod's various hotkey actions");
             notifyOnFirstBlinkAttempts.CreateValueConfigEntry("Whether the mod should display a toast notification when the game internally attempts a blink and has not yet triggered the randomizer's first blink");
+            notifyOnSimulatedAchievements.CreateValueConfigEntry("Whether the mod should display a toast notification when the game internally triggers an achievement that isn't already in the mod's Simulated Achievements list");
+            simulatedAchievementToastHoldTime.CreateValueConfigEntry("How long Simulated Achievement toasts should remain on the screen before fading out");
+            resetSimulatedAchievements.CreateValueConfigEntry("What will trigger the mod's internal Simulated Achievements list being reset");
             logConfigOnReload.CreateValueConfigEntry("Whether the mod should print the newly loaded config to the modloader's console log after reloading it");
             assetSubcriber.CreateValueConfigEntry("Whether the mod should attempt to download new assets from it's GitHub repo on launch, when they are available");
 
@@ -514,6 +523,7 @@ namespace KatieSaveHelper
             regenerateSessionSeedAction.CreateKeyConfigEntry("regenerate the game's active session seed using the generator specified in the 'Session Seed Generator Type' setting");
             regenerateHardwareSeedAction.CreateKeyConfigEntry("regenerate the game's active hardware seed using the generator specified in the 'Hardware Seed Generator Type' setting");
             resetGameBlinkRandomizerAction.CreateKeyConfigEntry("reset the game's Blink Randomizer");
+            resetSimulatedAchievementsAction.CreateKeyConfigEntry("reset the mod's Simulated Achievements list");
 
             exitToSaveSelect.CreateKeyConfigEntry("immediately exit the current save to the Save Select Menu");
             exitToSaveSelectAndEraseSave.CreateKeyConfigEntry("immediately erase the current save and exit to the Save Select Menu");

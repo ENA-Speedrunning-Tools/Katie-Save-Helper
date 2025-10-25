@@ -10,6 +10,7 @@ using System;
 using UnityEngine.Events;
 using System.Linq;
 using KatieSaveHelper.Patches;
+using UnityEngine.Playables;
 
 namespace KatieSaveHelper
 {
@@ -103,7 +104,8 @@ namespace KatieSaveHelper
 
         public bool IsReady => ready;
 
-        public StagedValue() {
+        public StagedValue()
+        {
             this.ready = false;
             this.value = default(T);
         }
@@ -185,11 +187,15 @@ namespace KatieSaveHelper
         // Scene stuff
 
         private static readonly FieldInfo transitionField = AccessTools.Field(typeof(SceneChanger), "transition");
-        public static void ChangeScene(string sceneName, Transition transition = null, SceneChanger.NotifyType notifyType = SceneChanger.NotifyType.None, bool stopAudio = false)
+        public static void ChangeScene(string sceneName, Transition transition = null, SceneChanger.NotifyType notifyType = SceneChanger.NotifyType.None, bool stopAudio = false, bool stopCutscenes = false)
         {
             if (sceneName == "Menu" || stopAudio)
             {
                 AudioPlayback.StopAllAudio();
+            }
+            if (stopCutscenes)
+            {
+                StopAllCutscenes();
             }
             if (transition == null)
             {
@@ -281,6 +287,8 @@ namespace KatieSaveHelper
                 EditHardwareHash(GenerateHardwareSeed().seed);
             if (KatieSaveHelperModConfig.resetBlinkRandomizer.Value == eventType)
                 PlayerRandomBlink_Patch.ResetBlinkChanceGenerator();
+            if (KatieSaveHelperModConfig.resetSimulatedAchievements.Value == eventType)
+                Achievements_Patch.ResetSimulatedAchievements();
         }
 
         // Random stuff
@@ -372,6 +380,34 @@ namespace KatieSaveHelper
         public static string GetHexFromColor(Color color)
         {
             return "#" + ColorUtility.ToHtmlStringRGB(color);
+        }
+
+        // Cutscene stuff
+
+        public static void StopAllCutscenes()
+        {
+            // cancel all active PlayableDirectors
+            var directors = Resources.FindObjectsOfTypeAll<PlayableDirector>();
+            foreach (var director in directors)
+            {
+                if (director == null || director.state != PlayState.Playing)
+                    continue;
+                director.Stop();
+            }
+
+            // cancel all Yarn DialogueRunners
+            foreach (var runner in GameObject.FindObjectsOfType<Yarn.Unity.DialogueRunner>())
+            {
+                if (runner.IsDialogueRunning)
+                    runner.Stop();
+            }
+
+            // cancel HUDDialogue coroutines (kills audio/text playback)
+            foreach (var hudDialogue in GameObject.FindObjectsOfType<JoelG.ENA4.UI.HUD.Dialogue.HUDDialogue>())
+            {
+                hudDialogue.StopAllCoroutines();
+                hudDialogue.gameObject.SetActive(false);
+            }
         }
 
     }
