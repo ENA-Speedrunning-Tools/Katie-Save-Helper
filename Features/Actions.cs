@@ -3,65 +3,144 @@ using KatieSaveHelper.Patches;
 using UnityEngine.SceneManagement;
 using LMirman.Utilities;
 using System;
-using JoelG.ENA4.UI;
-using UnityEngine;
-using JoelG.ENA4.Audio;
+using System.Collections;
+using MelonLoader;
+using System.IO;
 
 namespace KatieSaveHelper
 {
-    public static class KatieSaveHelperModActions
+    public static class KatieActions
     {
-
-        internal static StagedValue<int> customSeedOnReset = new StagedValue<int>();
-        internal static StagedValue<int> customSeedOnLoad = new StagedValue<int>();
-        internal static StagedValue<Transition> customTransition = new StagedValue<Transition>();
         internal static StagedValue<MainMenuPanelType> customMainMenuPanelOnLoad = new StagedValue<MainMenuPanelType>();
 
         internal static bool autoSaveDisabled = false;
         internal static bool allowNextSaveAttempt = false;
 
-        public static void reloadConfig()
+        private static string ActiveSceneName
         {
-            KatieSaveHelperModConfig.ReloadConfig();
+            get
+            {
+                return SceneManager.GetActiveScene().name;
+            }
+        }
 
-            ToastController.TryQueueToast("Config reloaded");
+        private static readonly OnSceneLoadPatch oslPatcher = new OnSceneLoadPatch(CheckKatieRoutines, patchOnStartup: true);
+        private static void CheckKatieRoutines(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name == "Menu")
+            {
+                StaticCoroutine.RequestCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader"));
+            }
+            else
+            {
+                StaticCoroutine.RequestCancelAll(sc => sc.Identifier == MainMenuPanelGroup_Patch.menuEventTriggerRoutineIdentifier || sc.Identifier.StartsWith("KSH.Action.RegenerateSeed"));
+            }
+        }
+
+        public static IEnumerator reloadConfig(StaticCoroutine scWrapper)
+        {
+            if (StaticCoroutine.AnyGroupDupesActive(scWrapper))
+            {
+                ToastBehaviours.Notice(
+                    new ToastInstance(
+                        "Config failed to reload, please try again shortly",
+                        "KSH.ReloadConfig.Fail.Throttle",
+                        holdTime: 3f
+                    ),
+                    sendToLog: false
+                );
+                yield break;
+            }
+
+            yield return StaticCoroutine.WaitForCancelDupes(scWrapper, scWrapper.CancelToken);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            bool success = false;
+
+            yield return KatieConfig.configFile.FileActionRoutine(
+                FileMode.OpenOrCreate,
+                FileAccess.Read,
+                fileAction: MelonPreferences.Load,
+                token: scWrapper.CancelToken,
+                onSuccess: () => success = true,
+                onFail: () => success = false
+            );
+
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            if (success)
+            {
+                KatieConfig.LoadOptionsFromConfig();
+                ToastSettings.UpdateFromConfig();
+                ToastBehaviours.QuickAction("Config reloaded", "KSH.ReloadConfig.Success", sendToLog: false);
+            }
+            else
+            {
+                ToastBehaviours.Notice(
+                    new ToastInstance(
+                        "Config failed to reload, check logs for details",
+                        "KSH.ReloadConfig.Fail.Other",
+                        holdTime: 5f
+                    ),
+                    sendToLog: false
+                );
+                KatieLogger.Error("Failed to reload config");
+            }
+
+            StaticCoroutine.RequestCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") || sc.Identifier.StartsWith("KSH.Action.RegenerateSeed"));
+
+            if (StaticCoroutine.AnyActive(sc => sc.Identifier == SaveRandomizerHashes_Patch.seedInjectRoutineIdentifier && !sc.CancelToken.IsCancellationRequested))
+            {
+                SaveRandomizerHashes_Patch.StartNewSeedInjector();
+            }
+            else if (StaticCoroutine.AnyActive(sc => sc.Identifier == MainMenuPanelGroup_Patch.menuEventTriggerRoutineIdentifier && !sc.CancelToken.IsCancellationRequested))
+            {
+                MainMenuPanelGroup_Patch.StartNewMenuEventTrigger();
+            }
+            else
+            {
+                MainMenu_Patch.TryCancelSaveTransition();
+            }
         }
         public static void quickSave()
         {
-            string currentSceneName = SceneManager.GetActiveScene().name;
+            string currentSceneName = ActiveSceneName;
 
             if (currentSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot save in Main Menu");
+                ToastBehaviours.Notice("Cannot save in Main Menu", "KSH.QuickSave.InMenu");
                 return;
             }
 
             allowNextSaveAttempt = true;
-            if (currentSceneName == SaveFile.CurrentSave.GameState.GetDestinationScene())
+            string stateSceneName = SaveFile.CurrentSave.GameState.GetDestinationScene();
+            if (currentSceneName == stateSceneName)
             {
-                SaveFile.WriteSaveWithEntrance(SaveFile.CurrentSave.GameState.SavedSceneEntrance);
+                // Save at the scene and entrance flag stored in the internal game state
+                SaveFile.WriteSave();
             }
             else
             {
+                // Save at the currently active scene with the default entrance flag
                 SaveFile.WriteSaveWithEntrance();
             }
-            ToastController.TryQueueAndLogToast("Game saved");
+
+            ToastBehaviours.QuickAction("Game saved", "KSH.QuickSave.Success");
         }
 
         public static void logCurrentSeedInfo()
         {
             int currentSaveIndex = MetaSaveFile.Current.SaveIndex;
-            int currentSaveFileHash;
+            int currentSaveFileHash = 0;
             bool fileSuccess;
             try
             {
-                var ganeFile = KatieUtil.ReadGameFile(currentSaveIndex);
-                currentSaveFileHash = ganeFile.Data.SaveHash;
+                var gameFile = KatieUtil.ReadGameFile(currentSaveIndex);
+                currentSaveFileHash = gameFile.Data.SaveHash;
                 fileSuccess = true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                currentSaveFileHash = 0;
                 fileSuccess = false;
             }
 
@@ -91,7 +170,7 @@ namespace KatieSaveHelper
                 $"\n\t\tENA Taxi Mood: {KatiePsuedoRandomizer.HardwareMode.EvaluateEnaTaxiMood(hardwareHash)}"
                 );
 
-            ToastController.TryQueueToast("Current seed info logged");
+            ToastBehaviours.QuickAction("Current seed info logged", "KSH.LogCurrentSeedInfo");
         }
 
         public static void toggleAutoSave()
@@ -100,277 +179,474 @@ namespace KatieSaveHelper
 
             string status = autoSaveDisabled ? "disabled" : "enabled";
 
-            ToastController.TryQueueAndLogToast($"Auto saving {status}");
+            ToastBehaviours.Toggle($"Auto saving is now {status}", "KSH.ToggleAutoSave");
         }
 
         public static void exitToSaveSelect()
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Already in the Main Menu");
+                ToastBehaviours.Notice("Already in the Main Menu", "KSH.ExitToSaveSelect.InMenu");
                 return;
             }
 
             customMainMenuPanelOnLoad.StageValue(MainMenuPanelType.FileSelect);
 
-            KatieUtil.ChangeScene("Menu", KatieSaveHelperModConfig.exitToSaveSelect.Transition, stopAudio: true, stopCutscenes: true);
+            KatieUtil.ChangeScene("Menu", transition: KatieConfig.Settings.exitToSaveSelect.Transition, stopAudio: true, stopCutscenes: true);
         }
 
         public static void exitToSaveSelectAndEraseSave()
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Already in the Main Menu");
+                ToastBehaviours.Notice("Already in the Main Menu", "KSH.ExitToSaveSelect.InMenu");
                 return;
             }
 
-            SaveFile.DeleteSave(MetaSaveFile.Current.SaveIndex);
+            int currentSaveIndex = MetaSaveFile.Current.SaveIndex;
+
+            SaveFile.DeleteSave(currentSaveIndex);
 
             customMainMenuPanelOnLoad.StageValue(MainMenuPanelType.FileSelect);
 
-            KatieUtil.ChangeScene("Menu", KatieSaveHelperModConfig.exitToSaveSelectAndEraseSave.Transition, stopAudio: true, stopCutscenes: true);
+            KatieUtil.ChangeScene("Menu", transition: KatieConfig.Settings.exitToSaveSelectAndEraseSave.Transition, stopAudio: true, stopCutscenes: true);
+
+            ToastController.TryQueueAndLogToast($"Save {currentSaveIndex} erased", "KSH.ExitToSaveSelect.SaveErased");
         }
 
         public static void warpToNextScene()
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot warp in Main Menu");
+                ToastBehaviours.Notice("Cannot warp in Main Menu", "KSH.Warp.InMenu");
                 return;
             }
 
-            KatieSceneWarp.WarpNext();
-            ToastController.TryQueueAndLogToast("Warped to next Scene");
+            string targetScene = KatieSceneWarp.WarpNextScene();
+            var sceneInfo = KatieSceneWarp.RelativeSceneInfo;
+            if (targetScene != null)
+                ToastBehaviours.Toggle($"Warping to next Scene '{sceneInfo.name}'", "KSH.Warp");
+            else
+                ToastBehaviours.Toggle($"No next Scene found", "KSH.Warp");
         }
 
         public static void warpToPrevScene()
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot warp in Main Menu");
+                ToastBehaviours.Notice("Cannot warp in Main Menu", "KSH.Warp.InMenu");
                 return;
             }
 
-            KatieSceneWarp.WarpPrev();
-            ToastController.TryQueueAndLogToast("Warped to previous Scene");
+            string targetScene = KatieSceneWarp.WarpPrevScene();
+            var sceneInfo = KatieSceneWarp.RelativeSceneInfo;
+            if (targetScene != null)
+                ToastBehaviours.Toggle($"Warping to previous Scene '{sceneInfo.name}'", "KSH.Warp");
+            else
+                ToastBehaviours.Toggle($"No previous Scene found", "KSH.Warp");
         }
 
-        public static void regenerateSessionSeed()
+        public static void warpToNextEntrance()
         {
-            if (KatieSaveHelperModConfig.regenerateSessionSeed.Value != CustomEventType.OnHotkey)
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Hotkey for regenerating Session seed is disabled");
+                ToastBehaviours.Notice("Cannot warp in Main Menu", "KSH.Warp.InMenu");
                 return;
             }
 
-            if (SceneManager.GetActiveScene().name != "Menu")
-            {
-                ToastController.TryQueueAndLogToast("Cannot regenerate Session seed outside Main Menu");
-                return;
-            }
+            var warpTuple = KatieSceneWarp.WarpNextEntrance();
+            var sceneInfo = KatieSceneWarp.RelativeSceneInfo;
 
-            var seedTuple = KatieUtil.GenerateSessionSeed();
-            if (!seedTuple.success)
-            {
-                ToastController.TryQueueToast("Could not regenerate Sessions seed, no seed found");
-            }
 
-            KatieUtil.EditSessionHash(seedTuple.seed, showToast:true);
+            switch (warpTuple.returnCode)
+            {
+                case 0:
+                    ToastBehaviours.Toggle($"Warped to next Entrance '{sceneInfo.entranceFlag}' in Scene '{sceneInfo.name}'", "KSH.Warp");
+                    break;
+                case 1:
+                    ToastBehaviours.Toggle($"Entrances for scene '{sceneInfo.name}' are undiscovered", "KSH.Warp");
+                    break;
+                case 2:
+                    ToastBehaviours.Toggle($"No next Entrance found", "KSH.Warp");
+                    break;
+            }
         }
 
-        public static void regenerateHardwareSeed()
+        public static void warpToPrevEntrance()
         {
-            if (KatieSaveHelperModConfig.regenerateHardwareSeed.Value != CustomEventType.OnHotkey)
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Hotkey for regenerating Hardware seed is disabled");
+                ToastBehaviours.Notice("Cannot warp in Main Menu", "KSH.Warp.InMenu");
                 return;
             }
 
-            if (SceneManager.GetActiveScene().name != "Menu")
+            var warpTuple = KatieSceneWarp.WarpPrevEntrance();
+            var sceneInfo = KatieSceneWarp.RelativeSceneInfo;
+
+            switch (warpTuple.returnCode)
             {
-                ToastController.TryQueueAndLogToast("Cannot regenerate Hardware seed outside Main Menu");
-                return;
+                case 0:
+                    ToastBehaviours.Toggle($"Warped to previous Entrance '{sceneInfo.entranceFlag}' in Scene '{sceneInfo.name}'", "KSH.Warp");
+                    break;
+                case 1:
+                    ToastBehaviours.Toggle($"Entrances for scene '{sceneInfo.name}' are undiscovered", "KSH.Warp");
+                    break;
+                case 2:
+                    ToastBehaviours.Toggle($"No previous Entrance found", "KSH.Warp");
+                    break;
+            }
+        }
+
+        public static IEnumerator regenerateSessionSeed(StaticCoroutine scWrapper)
+        {
+            if (KatieConfig.Settings.regenerateSessionSeed.Value != CustomEventType.OnHotkey)
+            {
+                ToastBehaviours.Notice("Hotkey for regenerating Session seed is disabled", "KSH.RegenerateSessionSeed.Disabled");
+                yield break;
             }
 
-            var seedTuple = KatieUtil.GenerateHardwareSeed();
-            if (!seedTuple.success)
+            if (ActiveSceneName != "Menu")
             {
-                ToastController.TryQueueToast("Could not regenerate Sessions seed, no seed found");
+                ToastBehaviours.Notice("Cannot regenerate Session seed outside Main Menu", "KSH.RegenerateSessionSeed.NotInMenu");
+                yield break;
             }
 
-            KatieUtil.EditHardwareHash(seedTuple.seed, showToast:true);
+            if (StaticCoroutine.AnyActive(sc => sc.Identifier == MainMenuPanelGroup_Patch.menuEventTriggerRoutineIdentifier || sc.Identifier == SaveRandomizerHashes_Patch.seedInjectRoutineIdentifier))
+            {
+                ToastBehaviours.Notice("Please wait, Non-Save seeds still generating", "KSH.SeedGenBusy.NonSave");
+                yield break;
+            }
+
+            yield return StaticCoroutine.WaitForCancelDupes(scWrapper, scWrapper.CancelToken);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            var introHandle = ToastBehaviours.BeginActivity("Regenerating Session seed", "KSH.RegenerateSessionSeed.Start");
+
+            var seedTask = KatieUtil.GenerateSessionSeed(scWrapper.CancelToken);
+            yield return KatieUtil.WaitForTask(seedTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            if (seedTask.Result.returnCode != SeedGeneratorReturnCode.Success)
+            {
+                ToastController.TryQueueToast("Could not regenerate Session seed, no seed found", "KSH.RegenerateSessionSeed.SeedNotFound");
+            }
+
+            int newSeed = seedTask.Result.seed;
+
+            KatieUtil.EditSessionHash(newSeed);
+
+            ToastBehaviours.EndActivity(introHandle, $"Session seed changed to {newSeed}", "KSH.RegenerateSessionSeed.Finish");
+        }
+
+        public static IEnumerator regenerateHardwareSeed(StaticCoroutine scWrapper)
+        {
+            if (KatieConfig.Settings.regenerateHardwareSeed.Value != CustomEventType.OnHotkey)
+            {
+                ToastBehaviours.Notice("Hotkey for regenerating Hardware seed is disabled", "KSH.RegenerateHardwareSeed.Disabled");
+                yield break;
+            }
+
+            if (ActiveSceneName != "Menu")
+            {
+                ToastBehaviours.Notice("Cannot regenerate Hardware seed outside Main Menu", "KSH.RegenerateHardwareSeed.NotInMenu");
+                yield break;
+            }
+
+            if (StaticCoroutine.AnyActive(sc => sc.Identifier == MainMenuPanelGroup_Patch.menuEventTriggerRoutineIdentifier || sc.Identifier == SaveRandomizerHashes_Patch.seedInjectRoutineIdentifier))
+            {
+                ToastBehaviours.Notice("Please wait, Non-Save seeds still generating", "KSH.SeedGenBusy.NonSave");
+                yield break;
+            }
+
+            yield return StaticCoroutine.WaitForCancelDupes(scWrapper, scWrapper.CancelToken);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            var introHandle = ToastBehaviours.BeginActivity("Regenerating Hardware seed", "KSH.RegenerateHardwareSeed.Start");
+
+            var seedTask = KatieUtil.GenerateHardwareSeed(scWrapper.CancelToken);
+            yield return KatieUtil.WaitForTask(seedTask);
+
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+            if (seedTask.Result.returnCode != SeedGeneratorReturnCode.Success)
+            {
+                ToastController.TryQueueToast("Could not regenerate Hardware seed, no seed found");
+            }
+
+            int newSeed = seedTask.Result.seed;
+
+            KatieUtil.EditHardwareHash(newSeed);
+
+            ToastBehaviours.EndActivity(introHandle, $"Hardware seed changed to {newSeed}", "KSH.RegenerateHardwareSeed.Finish");
         }
 
         public static void resetGameBlinkRandomizer()
         {
-            if (KatieSaveHelperModConfig.resetBlinkRandomizer.Value != CustomEventType.OnHotkey)
+            if (KatieConfig.Settings.resetBlinkRandomizer.Value != CustomEventType.OnHotkey)
             {
-                ToastController.TryQueueAndLogToast("Hotkey for resetting Blink Randomizer is disabled");
+                ToastBehaviours.Notice("Hotkey for resetting Blink Randomizer is disabled", "KSH.ResetGameBlinkRandomizer.Disabled");
                 return;
             }
 
-            if (SceneManager.GetActiveScene().name != "Menu")
+            if (ActiveSceneName != "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reset Blink Randomizer outside Main Menu");
+                ToastBehaviours.Notice("Cannot reset Blink Randomizer outside Main Menu", "KSH.ResetGameBlinkRandomizer.NotInMenu");
                 return;
             }
 
             PlayerRandomBlink_Patch.ResetBlinkChanceGenerator();
 
-            ToastController.TryQueueToast("Blink Randomizer reset");
+            ToastBehaviours.QuickAction("Blink Randomizer reset", "KSH.ResetGameBlinkRandomizer.Success");
         }
 
         public static void resetSimulatedAchievements()
         {
-            if (KatieSaveHelperModConfig.resetSimulatedAchievements.Value != CustomEventType.OnHotkey)
+            if (KatieConfig.Settings.resetSimulatedAchievements.Value != CustomEventType.OnHotkey)
             {
-                ToastController.TryQueueAndLogToast("Hotkey for resetting Simulated Achievements is disabled");
+                ToastBehaviours.Notice("Hotkey for resetting Simulated Achievements is disabled", "KSH.ResetSimulatedAchievements.Disabled");
                 return;
             }
 
-            if (SceneManager.GetActiveScene().name != "Menu")
+            if (ActiveSceneName != "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reset Simulated Achievements outside Main Menu");
+                ToastBehaviours.Notice("Cannot reset Simulated Achievements outside Main Menu", "KSH.ResetSimulatedAchievements.NotInMenu");
                 return;
             }
 
-            Achievements_Patch.ResetSimulatedAchievements(showToast:true);
+            Achievements_Patch.ResetSimulatedAchievements();
+
+            ToastBehaviours.QuickAction("Simulated Achievements reset", "KSH.ResetSimulatedAchievements.Success");
         }
 
-        public static void reloadSaveWithFileSeed()
+        public static IEnumerator reloadSaveWithFileSeed(StaticCoroutine scWrapper)
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reload saves in Main Menu");
-                return;
+                ToastBehaviours.Notice("Cannot reload saves in Main Menu", "KSH.SaveReloaderAction.Reload.InMenu");
+                yield break;
             }
 
-            ToastController.TryQueueToast("Reloading save with File seed");
+            yield return StaticCoroutine.WaitForCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") && sc != scWrapper);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            KatieUtil.StopAllCutscenes();
-            AudioPlayback.StopAllAudio();
+            var introHandle = ToastBehaviours.BeginActivity("Reloading save with File seed", "KSH.SaveReloaderAction.Reload.WithFile.Start");
 
-            customTransition.StageValue(KatieSaveHelperModConfig.reloadSaveWithFileSeed.Transition.Copy());
+            var continueTask = ContinueSave_Patch.ContinueSaveAsync(
+                token: scWrapper.CancelToken,
+                transition: KatieConfig.Settings.reloadSaveWithFileSeed.Transition,
+                origin: KatieSceneChanger.Origin.Manual
+                );
 
-            SaveFile.ContinueSave();
+            yield return KatieUtil.WaitForTask(continueTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            string activityEndMessage;
+
+            if (continueTask.Result.returnCode > SeedGeneratorReturnCode.TaskCancelled)
+            {
+                activityEndMessage = "Could not reload, no seed found";
+            }
+            else
+            {
+                activityEndMessage = $"Loaded Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}";
+            }
+
+            ToastBehaviours.EndActivity(introHandle, $"Loaded Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}", "KSH.SaveReloaderAction.Reload.WithFile.Finish", 
+                h => h.instance.groupName.StartsWith("KSH.SaveReloaderAction") && (h.instance.groupName.EndsWith("Start") || h.instance.groupName.EndsWith("Finish")));
         }
 
-        public static void reloadSaveWithCurrentSeed()
+        public static IEnumerator reloadSaveWithCurrentSeed(StaticCoroutine scWrapper)
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reload saves in Main Menu");
-                return;
+                ToastBehaviours.Notice("Cannot reload saves in Main Menu", "KSH.SaveReloaderAction.Reload.InMenu");
+                yield break;
             }
 
-            ToastController.TryQueueToast("Reloading Save using Current seed");
+            yield return StaticCoroutine.WaitForCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") && sc != scWrapper);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            KatieUtil.StopAllCutscenes();
-            AudioPlayback.StopAllAudio();
+            var introHandle = ToastBehaviours.BeginActivity("Reloading save with Current seed", "KSH.SaveReloaderAction.Reload.WithCurrent.Start");
 
-            customTransition.StageValue(KatieSaveHelperModConfig.reloadSaveWithCurrentSeed.Transition.Copy());
+            var continueTask = ContinueSave_Patch.ContinueSaveAsync(
+                token: scWrapper.CancelToken,
+                seed: SaveFile.CurrentSave.SaveHash,
+                transition: KatieConfig.Settings.reloadSaveWithCurrentSeed.Transition,
+                origin: KatieSceneChanger.Origin.Manual
+                );
 
-            customSeedOnLoad.StageValue(SaveFile.CurrentSave.SaveHash);
+            yield return KatieUtil.WaitForTask(continueTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            SaveFile.ContinueSave();
+            string activityEndMessage;
+
+            if (continueTask.Result.returnCode > SeedGeneratorReturnCode.TaskCancelled)
+            {
+                activityEndMessage = "Could not reload, no seed found";
+            }
+            else
+            {
+                activityEndMessage = $"Loaded Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}";
+            }
+
+            ToastBehaviours.EndActivity(introHandle, activityEndMessage, "KSH.SaveReloaderAction.Reload.WithCurrent.Finish",
+                h => h.instance.groupName.StartsWith("KSH.SaveReloaderAction") && (h.instance.groupName.EndsWith("Start") || h.instance.groupName.EndsWith("Finish")));
         }
 
-        public static void reloadSaveWithNewSeed()
+        public static IEnumerator reloadSaveWithNewSeed(StaticCoroutine scWrapper)
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reload saves in Main Menu");
-                return;
+                ToastBehaviours.Notice("Cannot reload saves in Main Menu", "KSH.SaveReloaderAction.Reload.InMenu");
+                yield break;
             }
 
-            ToastController.TryQueueToast("Reloading Save using New seed");
+            yield return StaticCoroutine.WaitForCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") && sc != scWrapper);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            customTransition.StageValue(KatieSaveHelperModConfig.reloadSaveWithNewSeed.Transition.Copy());
+            var introHandle = ToastBehaviours.BeginActivity("Reloading save with New seed", "KSH.SaveReloaderAction.Reload.WithNew.Start");
 
-            var seedTuple = KatieUtil.GenerateSaveSeed();
-            if (!seedTuple.success)
+            var continueTask = ContinueSave_Patch.ContinueSaveAsync(
+                token: scWrapper.CancelToken,
+                seedGenerator: KatieUtil.GenerateSaveSeed,
+                transition: KatieConfig.Settings.reloadSaveWithNewSeed.Transition,
+                origin: KatieSceneChanger.Origin.Manual
+                );
+
+            yield return KatieUtil.WaitForTask(continueTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            string activityEndMessage;
+
+            if (continueTask.Result.returnCode > SeedGeneratorReturnCode.TaskCancelled)
             {
-                ToastController.TryQueueToast("Could not reload, no seed found");
-                return;
+                activityEndMessage = "Could not reload, no seed found";
+            }
+            else
+            {
+                activityEndMessage = $"Loaded Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}";
             }
 
-            KatieUtil.StopAllCutscenes();
-            AudioPlayback.StopAllAudio();
-
-            customSeedOnLoad.StageValue(seedTuple.seed);
-
-            SaveFile.ContinueSave();
+            ToastBehaviours.EndActivity(introHandle, activityEndMessage, "KSH.SaveReloaderAction.Reload.WithNew.Finish",
+                h => h.instance.groupName.StartsWith("KSH.SaveReloaderAction") && (h.instance.groupName.EndsWith("Start") || h.instance.groupName.EndsWith("Finish")));
         }
 
-        public static void resetSaveWithFileSeed()
+        public static IEnumerator resetSaveWithFileSeed(StaticCoroutine scWrapper)
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reset saves in Main Menu");
-                return;
+                ToastBehaviours.Notice("Cannot reset saves in Main Menu", "KSH.SaveReloaderAction.Reset.InMenu");
+                yield break;
             }
 
-            ToastController.TryQueueToast("Resetting Save using File seed");
+            yield return StaticCoroutine.WaitForCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") && sc != scWrapper);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            var introHandle = ToastBehaviours.BeginActivity("Resetting save with File seed", "KSH.SaveReloaderAction.Reset.WithFile.Start");
 
             GameFile<SaveFileData> gameFile = KatieUtil.ReadGameFile(MetaSaveFile.Current.SaveIndex);
 
-            KatieUtil.StopAllCutscenes();
-            AudioPlayback.StopAllAudio();
+            var continueTask = ContinueSave_Patch.ContinueSaveAsync(
+                token: scWrapper.CancelToken,
+                seed: gameFile.Data.SaveHash,
+                triggerReset: true,
+                transition: KatieConfig.Settings.resetSaveWithFileSeed.Transition,
+                origin: KatieSceneChanger.Origin.Manual
+                );
 
-            customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithFileSeed.Transition.Copy());
+            yield return KatieUtil.WaitForTask(continueTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            customSeedOnReset.StageValue(gameFile.Data.SaveHash);
+            string activityEndMessage;
 
-            SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
-            SaveFile.ContinueSave();
+            if (continueTask.Result.returnCode > SeedGeneratorReturnCode.TaskCancelled)
+            {
+                activityEndMessage = "Could not reset, no seed found";
+            }
+            else
+            {
+                activityEndMessage = $"Reset Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}";
+            }
+
+            ToastBehaviours.EndActivity(introHandle, activityEndMessage, "KSH.SaveReloaderAction.Reset.WithFile.Finish",
+                h => h.instance.groupName.StartsWith("KSH.SaveReloaderAction") && (h.instance.groupName.EndsWith("Start") || h.instance.groupName.EndsWith("Finish")));
         }
-        public static void resetSaveWithCurrentSeed()
+        public static IEnumerator resetSaveWithCurrentSeed(StaticCoroutine scWrapper)
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reset saves in Main Menu");
-                return;
+                ToastBehaviours.Notice("Cannot reset saves in Main Menu", "KSH.SaveReloaderAction.Reset.InMenu");
+                yield break;
             }
 
-            ToastController.TryQueueToast("Resetting Save using Current seed");
+            yield return StaticCoroutine.WaitForCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") && sc != scWrapper);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            KatieUtil.StopAllCutscenes();
-            AudioPlayback.StopAllAudio();
+            var introHandle = ToastBehaviours.BeginActivity("Resetting save with Current seed", "KSH.SaveReloaderAction.Reset.WithCurrent.Start");
 
-            customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithCurrentSeed.Transition.Copy());
+            var continueTask = ContinueSave_Patch.ContinueSaveAsync(
+                token: scWrapper.CancelToken,
+                seed: SaveFile.CurrentSave.SaveHash,
+                triggerReset: true,
+                transition: KatieConfig.Settings.resetSaveWithCurrentSeed.Transition,
+                origin: KatieSceneChanger.Origin.Manual
+                );
 
-            customSeedOnReset.StageValue(SaveFile.CurrentSave.SaveHash);
+            yield return KatieUtil.WaitForTask(continueTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
-            SaveFile.ContinueSave();
+
+            string activityEndMessage;
+
+            if (continueTask.Result.returnCode > SeedGeneratorReturnCode.TaskCancelled)
+            {
+                activityEndMessage = "Could not reset, no seed found";
+            }
+            else
+            {
+                activityEndMessage = $"Reset Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}";
+            }
+
+
+            ToastBehaviours.EndActivity(introHandle, activityEndMessage, "KSH.SaveReloaderAction.Reset.WithCurrent.Finish",
+                h => h.instance.groupName.StartsWith("KSH.SaveReloaderAction") && (h.instance.groupName.EndsWith("Start") || h.instance.groupName.EndsWith("Finish")));
         }
 
-        public static void resetSaveWithNewSeed()
+        public static IEnumerator resetSaveWithNewSeed(StaticCoroutine scWrapper)
         {
-            if (SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveSceneName == "Menu")
             {
-                ToastController.TryQueueAndLogToast("Cannot reset saves in Main Menu");
-                return;
+                ToastBehaviours.Notice("Cannot reset saves in Main Menu", "KSH.SaveReloaderAction.Reset.InMenu");
+                yield break;
             }
 
-            ToastController.TryQueueToast("Resetting Save using New seed");
+            yield return StaticCoroutine.WaitForCancelAll(sc => sc.Identifier.StartsWith("KSH.Action.SaveReloader") && sc != scWrapper);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
 
-            var seedTuple = KatieUtil.GenerateSaveSeed();
-            if (!seedTuple.success)
+            var introHandle = ToastBehaviours.BeginActivity("Resetting save with New seed", "KSH.SaveReloaderAction.Reset.WithNew.Start");
+
+            var continueTask = ContinueSave_Patch.ContinueSaveAsync(
+                token: scWrapper.CancelToken,
+                triggerReset: true,
+                transition: KatieConfig.Settings.resetSaveWithNewSeed.Transition,
+                origin: KatieSceneChanger.Origin.Manual
+                );
+
+            yield return KatieUtil.WaitForTask(continueTask);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            string activityEndMessage;
+
+            if (continueTask.Result.returnCode > SeedGeneratorReturnCode.TaskCancelled)
             {
-                ToastController.TryQueueToast("Could not reset, no seed found");
-                return;
+                activityEndMessage = "Could not reset, no seed found";
+            }
+            else
+            {
+                activityEndMessage = $"Reset Save {continueTask.Result.index} with seed {continueTask.Result.saveHash}";
             }
 
-            KatieUtil.StopAllCutscenes();
-            AudioPlayback.StopAllAudio();
-
-            customTransition.StageValue(KatieSaveHelperModConfig.resetSaveWithNewSeed.Transition.Copy());
-
-            customSeedOnReset.StageValue(seedTuple.seed);
-
-            SaveFile.ResetSave(MetaSaveFile.Current.SaveIndex);
-            SaveFile.ContinueSave();
+            ToastBehaviours.EndActivity(introHandle, activityEndMessage, "KSH.SaveReloaderAction.Reset.WithNew.Finish",
+                h => h.instance.groupName.StartsWith("KSH.SaveReloaderAction") && (h.instance.groupName.EndsWith("Start") || h.instance.groupName.EndsWith("Finish")));
         }
 
     }

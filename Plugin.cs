@@ -3,17 +3,16 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
-using System.Diagnostics;
 
-[assembly: MelonInfo(typeof(KatieSaveHelper.KatieSaveHelperMod), "Katie Save Helper", "1.0.8", "Katelyndev0211 and Zieraell")]
+[assembly: MelonInfo(typeof(KatieSaveHelper.KatieMain), "Katie Save Helper", "1.9.0", "Katelyndev0211 and Zieraell")]
 
 namespace KatieSaveHelper
 {
-    public class KatieSaveHelperMod : MelonMod
+    public class KatieMain : MelonMod
     {
         internal const string modGUID = "Zieraell.KatieSaveHelper";
         internal const string modName = "Katie Save Helper";
-        internal const string modVersion = "1.8.4.0";
+        internal const string modVersion = "1.9.0.0";
         internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         internal static readonly HarmonyLib.Harmony harmony = new HarmonyLib.Harmony(modGUID);
@@ -24,34 +23,22 @@ namespace KatieSaveHelper
 
         public override void OnInitializeMelon()
         {
-            Application.logMessageReceived += OnLog;
-
             // Subscribe to config loads
-            KatieSaveHelperModConfig.OnConfigLoaded += NotifyOnUpdate;
+            KatieConfig.OnConfigLoaded += NotifyOnUpdate;
 
-            KatieSaveHelperModConfig.LoadConfig();
+            // Subscribe to the application closing
+            Application.quitting += KatieSceneWarp.WriteEntranceCache;
+
+            KatieConfig.LoadConfig();
+
+            // Try to load the Scene Entrance cache
+            KatieSceneWarp.LoadEntranceCache();
 
             // Set up scene load events
             OnSceneLoadPatch.ApplyStartupPatches();
 
-            // Set default toggle settings
-            KatieSaveHelperModActions.autoSaveDisabled = KatieSaveHelperModConfig.autoSaveDisabledByDefault.Value;
-
             // Sync assets folder with repo
             KatieAssetHandler.OnStartup();
-
-            KatieLogger.Info($"{modName} loaded.");
-            KatieLogger.Info($"Mod by {modAuthors}");
-        }
-
-        private void OnLog(string condition, string stackTrace, LogType type)
-        {
-            if (condition.Contains("Running node"))
-            {
-                // Capture a stack trace from where the log was called
-                StackTrace st = new StackTrace(true); // true = capture file info if available
-                MelonLogger.Msg($"[NodeLogCatcher] Detected node log:\nMessage: {condition}\nCaptured StackTrace:\n{st}");
-            }
         }
 
         public override void OnUpdate()
@@ -76,15 +63,11 @@ namespace KatieSaveHelper
             }
         }
 
-        private static void UpdateCachedActions()
-        {
-            cachedActiveActions = KatieSaveHelperModConfig.allActiveActions.ToList();
-        }
+        private static void UpdateCachedActions() =>
+            cachedActiveActions = KatieConfig.allActiveActions.ToList();
 
-        private void NotifyOnUpdate()
-        {
+        private void NotifyOnUpdate() =>
             configUpdateToken = true;
-        }
 
     }
 

@@ -22,7 +22,7 @@ namespace KatieSaveHelper.Patches
             if (!CanBlink || firstBlink) return;
 
             blinkAttemptNumber += 1;
-            if (KatieSaveHelperModConfig.notifyOnFirstBlinkAttempts.Value)
+            if (KatieConfig.Settings.notifyOnFirstBlinkAttempts.Value)
                 ToastController.TryQueueToast($"Blink Attempt #{blinkAttemptNumber}");
         }
 

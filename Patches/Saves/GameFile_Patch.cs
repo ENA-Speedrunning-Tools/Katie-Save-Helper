@@ -1,10 +1,12 @@
 ﻿using HarmonyLib;
 using JoelG.ENA4;
 using LMirman.Utilities;
+using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
 
 namespace KatieSaveHelper.Patches
 {
@@ -21,6 +23,12 @@ namespace KatieSaveHelper.Patches
         private static readonly MethodInfo getDataAsJsonByteArrayMethod = AccessTools.Method(typeof(GameFile<SaveFileData>), "GetDataAsJsonByteArray");
         private static readonly MethodInfo peekFileMethod = AccessTools.Method(typeof(GameFile<SaveFileData>), "PeekFile");
 
+        public static byte[] GetDataAsJsonByteArray(this GameFile<SaveFileData> gameFile, Formatting format = Formatting.None)
+        {
+            string text = JsonConvert.SerializeObject(gameFile.Data, format, gameFile.jsonSerializeSettings);
+            return Encoding.UTF8.GetBytes(text);
+        }
+
         // Extension to write JSON data to a .dat file instead of a .json file
 
         public static void WriteFileAsJsonDat(this GameFile<SaveFileData> __instance)
@@ -28,7 +36,7 @@ namespace KatieSaveHelper.Patches
             if (!__instance.ValidData) return;
 
             string dataPath = (string)dataPathField.GetValue(__instance);
-            byte[] jsonByteArray = (byte[])getDataAsJsonByteArrayMethod.Invoke(__instance, null);
+            byte[] jsonByteArray = __instance.GetDataAsJsonByteArray(Formatting.Indented);
             string fileDirectory = (string)fileDirectoryField.GetValue(__instance);
             var fileWrittenDelegate = fileWrittenField.GetValue(__instance) as Action<GameFile<SaveFileData>>;
 
@@ -112,7 +120,7 @@ namespace KatieSaveHelper.Patches
         [HarmonyPrefix]
         public static bool WriteFile_Prefix(object __instance)
         {
-            if (!(__instance.GetType().IsGenericType && __instance.GetType().GetGenericTypeDefinition() == typeof(RemoteGameFile<>)) || KatieSaveHelperModConfig.disableRemoteSaveSync.Value == false)
+            if (!(__instance.GetType().IsGenericType && __instance.GetType().GetGenericTypeDefinition() == typeof(RemoteGameFile<>)) || KatieConfig.Settings.disableRemoteSaveSync.Value == false)
                 return true;
 
             var stackTrace = new StackTrace();

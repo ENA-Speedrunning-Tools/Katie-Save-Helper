@@ -12,7 +12,7 @@ namespace KatieSaveHelper.Patches
         private static readonly MethodInfo changeSceneMethod = AccessTools.Method(typeof(PauseGameOverlay), "ChangeScene");
         public static bool Prefix(PauseGameOverlay __instance)
         {
-            if (KatieSaveHelperModConfig.disableReturnToMainMenuPopup.Value)
+            if (KatieConfig.Settings.disableReturnToMainMenuPopup.Value)
             {
                 changeSceneMethod.Invoke(__instance, new object[] { "Menu" });
                 return false;

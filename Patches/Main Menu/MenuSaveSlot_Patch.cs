@@ -9,7 +9,7 @@ namespace KatieSaveHelper.Patches
     // If configured in the mod config, disable the 'Create New Save' and 'Reset Save' confirmation popups in the Main Menu, and allow completed saves to be selected
 
     [HarmonyPatch(typeof(MenuSaveSlot), nameof(MenuSaveSlot.SelectSave))]
-    public static class SelectSave_Patch
+    public static class MenuSaveSlot_Patch
     {
         private static readonly FieldInfo saveSlotUIField = AccessTools.Field(typeof(MenuSaveSlot), "saveSlotUI");
         private static readonly FieldInfo indexField = AccessTools.Field(typeof(MenuSaveSlot), "index");
@@ -21,13 +21,12 @@ namespace KatieSaveHelper.Patches
 
         public static bool Prefix(MenuSaveSlot __instance)
         {
-
             MenuSaveSlotUI saveSlotUI = (MenuSaveSlotUI)saveSlotUIField.GetValue(__instance);
             int index = (int)indexField.GetValue(__instance);
 
             if (saveSlotUI.IsResetMode)
             {
-                if (KatieSaveHelperModConfig.disableResetSavePopup.Value)
+                if (KatieConfig.Settings.disableResetSavePopup.Value)
                 {
                     resetSaveMethod.Invoke(__instance, null);
                 }
@@ -37,10 +36,17 @@ namespace KatieSaveHelper.Patches
                 }
                 return false;
             }
+
+            if (StaticCoroutine.AnyActive(sc => sc.Identifier == MainMenuPanelGroup_Patch.menuEventTriggerRoutineIdentifier || sc.Identifier == SaveRandomizerHashes_Patch.seedInjectRoutineIdentifier || sc.Identifier.StartsWith("KSH.Action.RegenerateSeed")))
+            {
+                ToastBehaviours.Notice("Please wait, Non-Save seeds still generating", "KSH.SeedGenBusy.NonSave", sendToLog: false);
+                return false;
+            }
+
             SaveFileData saveFileData = SaveFile.PeekSave(index);
             if (saveFileData == null)
             {
-                if (KatieSaveHelperModConfig.disableCreateSavePopup.Value)
+                if (KatieConfig.Settings.disableCreateSavePopup.Value)
                 {
                     executeSaveSelectionMethod.Invoke(__instance, null);
                 }
@@ -50,7 +56,7 @@ namespace KatieSaveHelper.Patches
                 }
                 return false;
             }
-            if (saveFileData.GameState.HasCompletedGame && !KatieSaveHelperModConfig.disableSaveFileLockAfterCompletion.Value)
+            if (saveFileData.GameState.HasCompletedGame && !KatieConfig.Settings.disableSaveFileLockAfterCompletion.Value)
             {
                 notifyFinishedSaveMethod.Invoke(__instance, null);
                 return false;

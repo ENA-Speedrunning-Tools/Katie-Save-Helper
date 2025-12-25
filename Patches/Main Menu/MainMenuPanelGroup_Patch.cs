@@ -1,6 +1,5 @@
 ﻿using JoelG.ENA4.UI;
 using HarmonyLib;
-using System.Threading;
 
 namespace KatieSaveHelper.Patches
 {
@@ -24,41 +23,48 @@ namespace KatieSaveHelper.Patches
     {
         public static bool menuLoadedOnce { get; private set; } = false;
 
+        public static readonly string menuEventTriggerRoutineIdentifier = "KSH.Event.TriggerCustomEvent.OnMainMenuLoad";
+
         public static bool Prefix(MainMenuPanelGroup __instance)
         {
             __instance.ReloadInitialItems();
             __instance.DisableAllItems();
 
-            int panelId;
+            MainMenuPanelType panelType;
 
-            if (KatieSaveHelperModActions.customMainMenuPanelOnLoad.IsReady)
+            if (KatieActions.customMainMenuPanelOnLoad.IsReady)
             {
-                panelId = (int)KatieSaveHelperModActions.customMainMenuPanelOnLoad.TakeValue();
+                panelType = KatieActions.customMainMenuPanelOnLoad.TakeValue();
             }
             else
             {
-                switch (KatieSaveHelperModConfig.skipMainMenuIntro.Value)
+                switch (KatieConfig.Settings.skipMainMenuIntro.Value)
                 {
                     case MainMenuSkipType.OnStartup:
-                        panelId = (int)(menuLoadedOnce ? MainMenuPanelType.Intro : MainMenuPanelType.Main);
+                        panelType = menuLoadedOnce ? MainMenuPanelType.Intro : MainMenuPanelType.Main;
                         break;
                     case MainMenuSkipType.Always:
-                        panelId = (int)MainMenuPanelType.Main;
+                        panelType = MainMenuPanelType.Main;
                         break;
                     default:
-                        panelId = (int)MainMenuPanelType.Intro;
+                        panelType = MainMenuPanelType.Intro;
                         break;
                 }
             }
 
-            __instance.SetPanelImmediately(panelId);
+            __instance.SetPanelImmediately((int)panelType);
 
             if (menuLoadedOnce)
-                KatieUtil.TriggerCustomEvent(CustomEventType.OnLoadMainMenu);
-
-            menuLoadedOnce = true;
+                StartNewMenuEventTrigger();
+            else
+                menuLoadedOnce = true;
 
             return false;
+        }
+
+        public static void StartNewMenuEventTrigger()
+        {
+            StaticCoroutine.Start(sc => KatieUtil.TriggerCustomEventRoutine(CustomEventType.OnLoadMainMenu, sc), menuEventTriggerRoutineIdentifier);
         }
     }
 }

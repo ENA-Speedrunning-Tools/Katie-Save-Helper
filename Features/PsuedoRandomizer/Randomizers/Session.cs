@@ -17,13 +17,14 @@ namespace KatieSaveHelper
 
     internal class KatiePsuedoSessionRandomizer : KatiePsuedoRandomizerBase
     {
+        public override string DisplayName => "Session Mode";
         private float normalBlinkProbability = Mathf.Clamp01(1f / (float)1000);
         private float coreBlinkProbability = Mathf.Clamp01(1f / (float)100);
-        public override void FillTargetEventList()
+        public override List<PsuedoTargetEvent> GetNewTargetEventList()
         {
-            targetEventList.Clear();
+            var targetEventList = new List<PsuedoTargetEvent>();
 
-            var blinkRangeTuple = ParseRange(KatieSaveHelperModConfig.psuedoRandomTargetBlinkAttempt, "0");
+            var blinkRangeTuple = ParseRange(KatieConfig.Settings.psuedoRandomTargetBlinkAttempt, "0");
 
             bool blinkFlag = false;
             switch (blinkRangeTuple.Item1)
@@ -45,7 +46,7 @@ namespace KatieSaveHelper
 
             if (blinkFlag)
             {
-                float blinkProbability = KatieSaveHelperModConfig.psuedoRandomBlinkAssumeInCore.Value ? coreBlinkProbability : normalBlinkProbability;
+                float blinkProbability = KatieConfig.Settings.psuedoRandomBlinkAssumeInCore.Value ? coreBlinkProbability : normalBlinkProbability;
                 switch (blinkRangeTuple.Item1)
                 {
                     case RangeType.EqualTo:
@@ -62,6 +63,8 @@ namespace KatieSaveHelper
                         break;
                 }
             }
+
+            return targetEventList;
         }
 
         private bool EvaluateFirstBlinkEqualTo(int baseHash, int targetAttemptNumber, float blinkProbability)
