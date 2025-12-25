@@ -74,7 +74,7 @@ Options to tweak the game's vanilla functionality
     * Values can be 'true' and 'false', the default value is false
 * *DisableCreateSavePopup* : Whether the mod should disable the confirmation window being displayed when creating a new save using the in-game Main Menu
     * Values can be 'true' and 'false', the default value is false
-* *DisableResetSavePopup* : "Whether the mod should disable the confirmation window being displayed when resetting an existing save using the in-game Main Menu
+* *DisableResetSavePopup* : Whether the mod should disable the confirmation window being displayed when resetting an existing save using the in-game Main Menu
     * Values can be 'true' and 'false', the default value is false
 
 #### Save Files
@@ -209,10 +209,10 @@ Options to change the keys that trigger the various actions of the mod
 #### Quick Actions
 
 * *QuickSave_Key*: Key used to write the data from the current save into its respective save file
-    * Default value is 'Alpha1'
+    * Default value is 'F1'
 
 * *ReloadConfig_Key*: Key used to reload all of the mod's settings from its config file
-    * Default value is 'Alpha4'
+    * Default value is 'F4'
 
 * *ToggleAutoSave_Key*: Key used to toggle the game's auto saving feature on and off
     * Default value is 'None'
@@ -222,7 +222,7 @@ Options to change the keys that trigger the various actions of the mod
 #### Reloading Saves
 
 * *ReloadSaveWithFileSeed_Key*: Key used to reload the current save normally, using the seed from it's respective save file
-    * Default value is 'Alpha2'
+    * Default value is 'F2'
 
 * *ReloadSaveWithCurrentSeed_Key* : Key used to reload the current save with the currently loaded seed
     * Default value is 'None'
@@ -235,9 +235,9 @@ Options to change the keys that trigger the various actions of the mod
 #### Resetting Saves
 
 * *ResetSaveWithFileSeed_Key*: Key used to immediately erase the current save, create a new empty one in the same slot that has the erased save file's stored seed, then load it
-    * Default value is 'None'
+    * Default value is 'F3'
 * *ResetSaveWithCurrentSeed_Key*: Key used to immediately erase the current save, create a new empty one in the same slot that has the currently loaded seed, then load it
-    * Default value is 'Alpha3'
+    * Default value is 'None'
 * *ResetSaveWithNewSeed_Key*: Key used to immediately erase the current save, create a new empty one in the same slot that has a new seed (generated used the method specified in the 'Save Seed Generator' config setting), then load it
     * Default value is 'None'
 
@@ -246,6 +246,10 @@ Options to change the keys that trigger the various actions of the mod
 * *WarpToNextScene_Key*: Key used to immediately warp to the next scene from the game's internal scene list
     * Default value is 'None'
 * *WarpToPreviousScene_Key*: Key used to immediately warp to the previous scene from the game's internal scene list
+    * Default value is 'None'
+* *WarpToNextEntrance_Key* : Key used to immediately warp to the next scene entrance within the currently loaded scene
+    * Default value is 'None'
+* *WarpToPreviousEntrance_Key* : Key used to immediately warp to the previous scene entrance within the currently loaded scene
     * Default value is 'None'
 
 #### Main Menu Shortcuts
@@ -268,6 +272,7 @@ Options to change the keys that trigger the various actions of the mod
 - Space, Escape, Tab, Backspace, LeftShift, RightControl, etc.
 - <sub>Exclaim, DoubleQuote, Hash, Dollar, Percent, Ampersand, Quote, LeftParen, RightParen, Asterisk, Plus, Comma, Minus, Period, Slash, Colon, Semicolon, Less, Equals, Greater, Question, At, LeftBracket, Backslash, RightBracket, Caret, Underscore, BackQuote
 - None
+
 </details>
 
 </details>
@@ -326,7 +331,7 @@ Options to modify the on-screen toast notifications that are triggered by certai
 
 #### Appearance
 
-* *Toast_FontFileName* : The file name (without the extension) of a `.ttf` file inside the `Zieraell.KatieSaveHelper` folder (which is in the same directory as the mod `.dll` file), that the mod will attempt to load as the font style for toasts
+* *Toast_FontFileName* : The file name (without the extension) of a `.ttf` file inside the `Zieraell.KatieSaveHelper/Fonts` folder (which is in the same directory as the mod `.dll` file), that the mod will attempt to load as the font style for toasts
     * The default value is 'RuneScape-ENA', but this file will not exist initially if the 'Subscribe To Asset Updates' setting is disabled
 * *Toast_FontSize* : The font size toasts should use
     * Values can be any integer above 0, the default value is '36'

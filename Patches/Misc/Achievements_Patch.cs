@@ -20,9 +20,9 @@ namespace KatieSaveHelper.Patches
         // Very late harmony patch so stuff doesn't break
         private static void ApplyPatch(Scene scene, LoadSceneMode mode)
         {
-            if (scene.name == "Menu")
+            if (scene.name != "Boot")
             {
-                KatieSaveHelperMod.Instance.harmony.Patch(
+                KatieMain.Instance.harmony.Patch(
                     original: AccessTools.Method(typeof(Achievements), nameof(Achievements.UnlockAchievement)),
                     postfix: new HarmonyMethod(typeof(Achievements_Patch), nameof(Achievements_Patch.UnlockAchievement_Postfix))
                 );
@@ -48,12 +48,12 @@ namespace KatieSaveHelper.Patches
             {
                 simulatedAchievements.Add(internalKey);
 
-                if (KatieSaveHelperModConfig.notifyOnSimulatedAchievements.Value == true)
+                if (KatieConfig.Settings.notifyOnSimulatedAchievements.Value)
                 {
                     string achDisplayName = SteamUserStats.GetAchievementDisplayAttribute(internalKey, "name");
                     if (string.IsNullOrEmpty(achDisplayName))
                         achDisplayName = internalKey;
-                    ToastController.TryQueueAndLogToast(new ToastInstance($"Triggered Achievement '{achDisplayName}' ({simulatedAchievements.Count}/{Lookup.Count})", holdTime: Mathf.Max(0, KatieSaveHelperModConfig.simulatedAchievementToastHoldTime.Value)));
+                    ToastController.TryQueueAndLogToast(new ToastInstance($"Triggered Achievement '{achDisplayName}' ({simulatedAchievements.Count}/{Lookup.Count})", holdTime: Mathf.Max(0, KatieConfig.Settings.simulatedAchievementToastHoldTime.Value)));
                 }
             }
             else if (!keyIsValid)
@@ -62,17 +62,10 @@ namespace KatieSaveHelper.Patches
             }
         }
 
-        public static void ResetSimulatedAchievements(bool showToast = false)
+        public static void ResetSimulatedAchievements()
         {
             simulatedAchievements.Clear();
-            if (showToast)
-            {
-                ToastController.TryQueueAndLogToast("Simulated Achievements reset");
-            }
-            else
-            {
-                KatieLogger.Info("Simulated Achievements reset");
-            }
+            KatieLogger.Info("Simulated Achievements reset");
         }
     }
 }

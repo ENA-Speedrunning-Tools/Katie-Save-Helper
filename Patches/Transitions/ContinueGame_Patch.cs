@@ -21,11 +21,11 @@ namespace KatieSaveHelper.Patches
         {
             SaveDataPlayerGameState gameState = (SaveDataPlayerGameState)gameStateField.GetValue(__instance);
             SaveDataNodeTraversalHistory sessionTraversalHistory = (SaveDataNodeTraversalHistory)sessionTraversalHistoryField.GetValue(__instance);
-            SceneChanger sceneChanger;
+            SceneChanger sceneChanger = new SceneChanger("Outworld", Color.black, fadeInTime, fadeOutTime);
 
             if (gameState.HasCompletedGame)
             {
-                if (KatieSaveHelperModConfig.disableSaveFileLockAfterCompletion.Value)
+                if (KatieConfig.Settings.disableSaveFileLockAfterCompletion.Value)
                 {
                     // Reset milestones
                     milestoneProgressField.SetValue(SaveFile.CurrentSave.GameState, 0);
@@ -33,40 +33,68 @@ namespace KatieSaveHelper.Patches
                 }
                 else
                 {
-                    new SceneChanger("Menu", Color.black, fadeInTime, fadeOutTime).GoToDestination();
+                    sceneChanger.SetDestination("Menu");
+                    sceneChanger.GoToDestination();
                     return false;
                 }
             }
 
             if (resetState)
-            {
                 sessionTraversalHistory.ResetAllNodes();
-            }
-
-            if (!KatieSaveHelperModActions.customTransition.IsReady)
-            {
-                sceneChanger = new SceneChanger("Outworld", Color.black, fadeInTime, fadeOutTime);
-            }
-            else
-            {
-                Transition newTransition = KatieSaveHelperModActions.customTransition.TakeValue();
-                sceneChanger = new SceneChanger("Outworld", newTransition.Color, newTransition.FadeInTime, newTransition.FadeOutTime);
-                transitionField.SetValue(sceneChanger, newTransition.Type);
-            }
 
             if (gameState.HasSavedSceneEntry)
             {
                 string text = gameState.GetDestinationScene();
                 if (text.Equals("menu", StringComparison.OrdinalIgnoreCase))
-                {
                     text = "Hub";
-                }
 
                 sceneChanger.SetDestination(text, gameState.SavedSceneEntrance ?? string.Empty);
             }
 
             sceneChanger.GoToDestination();
             return false;
+        }
+
+        public static void ContinueGame(this SaveFileData __instance, bool resetState = true, Transition? transition = null, KatieSceneChanger.Origin origin = KatieSceneChanger.Origin.Natural)
+        {
+            SaveDataPlayerGameState gameState = (SaveDataPlayerGameState)gameStateField.GetValue(__instance);
+            SaveDataNodeTraversalHistory sessionTraversalHistory = (SaveDataNodeTraversalHistory)sessionTraversalHistoryField.GetValue(__instance);
+
+            // Set to default transition if null
+            if (transition == null)
+                transition = KatieConfig.Settings.defaultTransition;
+
+            var sceneChanger = new KatieSceneChanger("Outworld", transition.Value, origin: origin);
+
+            if (gameState.HasCompletedGame)
+            {
+                if (KatieConfig.Settings.disableSaveFileLockAfterCompletion.Value)
+                {
+                    // Reset milestones
+                    milestoneProgressField.SetValue(SaveFile.CurrentSave.GameState, 0);
+                    SaveFile.WriteSave();
+                }
+                else
+                {
+                    sceneChanger.SetDestination("Menu");
+                    sceneChanger.GoToDestination();
+                    return;
+                }
+            }
+
+            if (resetState)
+                sessionTraversalHistory.ResetAllNodes();
+
+            if (gameState.HasSavedSceneEntry)
+            {
+                string text = gameState.GetDestinationScene();
+                if (text.Equals("menu", StringComparison.OrdinalIgnoreCase))
+                    text = "Hub";
+
+                sceneChanger.SetDestination(text, gameState.SavedSceneEntrance ?? string.Empty);
+            }
+
+            sceneChanger.GoToDestination();
         }
     }
 }

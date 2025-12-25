@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace KatieSaveHelper
@@ -59,18 +60,23 @@ namespace KatieSaveHelper
     internal abstract class KatiePsuedoRandomizerBase
     {
         internal List<PsuedoTargetEvent> targetEventList = new List<PsuedoTargetEvent>();
-        private Dictionary<string, int> eventFailCountMap = new Dictionary<string, int>();
+        public abstract string DisplayName { get; }
+        public abstract List<PsuedoTargetEvent> GetNewTargetEventList();
 
-        public abstract void FillTargetEventList();
-
-        protected void MapEventFailCounts()
+        public void ResetTargetEventList()
         {
-            eventFailCountMap.Clear();
-            foreach (var @event in targetEventList)
-                eventFailCountMap[@event.Name] = 0;
+            targetEventList = GetNewTargetEventList();
         }
 
-        protected void PrintEventFailCounts()
+        protected Dictionary<string, int> MapEventFailCounts(List<PsuedoTargetEvent> targetEventList)
+        {
+            var eventFailCountMap = new Dictionary<string, int>();
+            foreach (var @event in targetEventList)
+                eventFailCountMap[@event.Name] = 0;
+            return eventFailCountMap;
+        }
+
+        protected void PrintEventFailCounts(List<PsuedoTargetEvent> targetEventList, Dictionary<string, int> eventFailCountMap)
         {
             string failStr = "Attempt Fails:\n";
             foreach (var @event in targetEventList)
@@ -78,98 +84,128 @@ namespace KatieSaveHelper
             KatieLogger.Info(failStr);
         }
 
-        public (bool success, int seed) GeneratePsuedoRandomSeed()
+        public TrackedTask<(bool success, int seed)> GeneratePsuedoRandomSeed(CancellationToken token = default)
         {
-            MapEventFailCounts();
+            string identifier = $"KSH.Action.FindSeed.{DisplayName.Replace(" ", "")}";
 
-            KatieLogger.Info("Searching for seed...");
+            if (token.IsCancellationRequested)
+                return TrackedTask<(bool, int)>.FromCanceled(token, identifier);
 
-            KatieLogger.Info($"Active Events: {(targetEventList.Any() ? string.Join(", ", targetEventList.Select(x => x.Name)) : "None")}");
+            return TrackedTask<(bool, int)>.Start(() => FindSeed(token), identifier);
+        }
+        private (bool success, int seed) FindSeed(CancellationToken token)
+        {
+            List<PsuedoTargetEvent> targetEventListCopy = targetEventList.ToList();
 
-            int maxAllowedAttempts = KatieSaveHelperModConfig.psuedoRandomMaxAttempts.Value;
+            var eventFailCountMap = MapEventFailCounts(targetEventListCopy);
 
-            bool searchDirectionFlag = new Random().NextDouble() >= 0.5;
+            KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searching for seed...");
 
-            int attemptCount = 0;
+            KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Active Events: {(targetEventListCopy.Any() ? string.Join(", ", targetEventListCopy.Select(x => x.Name)) : "None")}");
 
-            int minValue;
-            Func<int> rollSeed;
-            Func<bool> boundsCheck;
-            Action iterateSeed;
+            long maxAttemptsConfig = KatieConfig.Settings.psuedoRandomMaxAttempts.Value;
+            bool naturalSeedsOnlyConfig = KatieConfig.Settings.psuedoRandomNaturalSeedsOnly.Value;
 
-            // Set the function to roll/reroll the seed based on the configured 'natural seeds only' mod option
+            long maxAllowedAttempts = naturalSeedsOnlyConfig
+                ? Math.Min(maxAttemptsConfig, int.MaxValue)
+                : Math.Min(maxAttemptsConfig, (long)uint.MaxValue);
 
-            if (KatieSaveHelperModConfig.psuedoRandomNaturalSeedsOnly.Value)
-            {
-                rollSeed = SaveRandomizer.GetAbsolutelyRandomValue;
-                minValue = 0;
-            }
-            else
-            {
-                rollSeed = GetRandomInt32;
-                minValue = int.MinValue;
-            }
+            var seedStream = new SplitMixSeedStream(naturalOnly: naturalSeedsOnlyConfig);
+            long attemptCount = 0;
+            int currentSeed = seedStream.Next();
 
-            int currentSeed = rollSeed();
-
-            // Set the functions to iterate and check the bounds of the seed for each iteration based on the generated search direction flag
-            if (searchDirectionFlag)
-            {
-                iterateSeed = () => currentSeed++;
-                boundsCheck = () => currentSeed > int.MaxValue;
-            }
-            else
-            {
-                iterateSeed = () => currentSeed--;
-                boundsCheck = () => currentSeed < minValue;
-            }
-
-        // Begin searching for a seed that passes each active Target Event
-        NewAttempt:
+            // Begin searching for a seed that passes each active Target Event
             while (attemptCount < maxAllowedAttempts)
             {
+                if (token.IsCancellationRequested) break;
+
                 attemptCount++;
 
-                // Reroll seed every 10,000 attempts or if the value has reached a bound of the int range
-                if (boundsCheck() || attemptCount % 10000 == 0)
-                {
-                    currentSeed = rollSeed();
-                }
+                bool allPassed = true;
 
-                foreach (PsuedoTargetEvent @event in targetEventList)
+                foreach (PsuedoTargetEvent @event in targetEventListCopy)
                 {
                     if (!@event.Evaluate(currentSeed))
                     {
-                        iterateSeed();
+                        allPassed = false;
+                        currentSeed = seedStream.Next();
                         eventFailCountMap[@event.Name]++;
-                        goto NewAttempt;
+                        break;
                     }
                 }
 
-                break;
+                if (allPassed) break;
             }
 
             if (attemptCount >= maxAllowedAttempts)
             {
-                KatieLogger.Warning("Seed not found.");
-                KatieLogger.Info($"Searched {attemptCount} total seeds");
-                PrintEventFailCounts();
+                KatieLogger.Warning($"(Seed Psuedo-Randomizer: {DisplayName}) Seed not found.");
+                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
+                PrintEventFailCounts(targetEventListCopy, eventFailCountMap);
+                return (false, 0);
+            }
+            else if (token.IsCancellationRequested)
+            {
+                KatieLogger.Warning($"(Seed Psuedo-Randomizer: {DisplayName}) Search cancelled.");
+                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
                 return (false, 0);
             }
             else
             {
-                KatieLogger.Info($"Seed found! {currentSeed}");
-                KatieLogger.Info($"Searched {attemptCount} total seeds");
+                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Seed found! {currentSeed}");
+                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
                 return (true, currentSeed);
             }
         }
+    }
+    
+    // Allows semi-randomly stepping through every possible number in the specified integer range without repeats
+    public struct SplitMixSeedStream
+    {
+        private readonly bool _naturalOnly;
+        private uint _state;
+        private const uint NaturalMax = 0x7FFFFFFF;
 
-        protected static int GetRandomInt32()
+        public bool NaturalSeedsOnly => _naturalOnly;
+        public int CurrentState => unchecked((int)_state);
+
+        public int CurrentSeed
         {
-            byte[] bytes = new byte[4];
-            using (var rng = RandomNumberGenerator.Create())
-                rng.GetBytes(bytes);
-            return BitConverter.ToInt32(bytes, 0);
+            get
+            {
+                uint z = _state;
+                z ^= z >> 16;
+                z *= 0x85EBCA6B;
+                z ^= z >> 13;
+                z *= 0xC2B2AE35;
+                z ^= z >> 16;
+
+                return _naturalOnly ? (int)(z & NaturalMax) : unchecked((int)z);
+            }
+        }
+
+        public SplitMixSeedStream(int? startSeed = null, bool naturalOnly = false)
+        {
+            if (startSeed == null) startSeed = KatieUtil.GetRandomInt32();
+            _state = unchecked((uint)startSeed);
+            if (naturalOnly)
+                _state &= NaturalMax;
+            _naturalOnly = naturalOnly;
+        }
+
+        public int Next()
+        {
+            if (_naturalOnly)
+            {
+                _state += 0x1D872B41;
+                _state &= NaturalMax;
+            }
+            else
+            {
+                _state += 0x9E3779B9;
+            }
+
+            return CurrentSeed;
         }
     }
 
@@ -178,11 +214,11 @@ namespace KatieSaveHelper
         public static readonly KatiePsuedoSaveRandomizer SaveMode = new KatiePsuedoSaveRandomizer();
         public static readonly KatiePsuedoSessionRandomizer SessionMode = new KatiePsuedoSessionRandomizer();
         public static readonly KatiePsuedoHardwareRandomizer HardwareMode = new KatiePsuedoHardwareRandomizer();
-        public static void FillTargetEventLists()
+        public static void ResetTargetEventLists()
         {
-            SaveMode.FillTargetEventList();
-            SessionMode.FillTargetEventList();
-            HardwareMode.FillTargetEventList();
+            SaveMode.ResetTargetEventList();
+            SessionMode.ResetTargetEventList();
+            HardwareMode.ResetTargetEventList();
         }
     }
 }

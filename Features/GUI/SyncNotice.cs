@@ -13,17 +13,35 @@ namespace KatieSaveHelper
 {
     public class SyncNotice : MonoBehaviour
     {
-        public static bool HasSeenNotice => File.Exists(Path.Combine(KatieAssetHandler.appDataDir, ".sync_notice_seen"));
-        public static void MarkNoticeAsSeen() => File.WriteAllText(Path.Combine(KatieAssetHandler.appDataDir, ".sync_notice_seen"), "seen");
+        private static FileHandler markFile = new FileHandler(
+            Path.Combine(KatieUtil.appDataDir, ".sync_notice_seen"),
+            "KSH.Event.SyncNotice"
+        );
+
+        public static bool HasSeenNotice => File.Exists(markFile.filePath);
+        public static void MarkNoticeAsSeen() =>
+            markFile.RunWithFile(
+                "KSH.Event.SyncNotice.Mark",
+                FileMode.OpenOrCreate,
+                FileAccess.Write,
+                fileAction: () => File.WriteAllText(markFile.filePath, "seen"),
+                onFail: () => KatieLogger.Error("Failed to mark the Sync Notice as seen")
+            );
 
         private static readonly OnSceneLoadPatch oslPatcher = new OnSceneLoadPatch(TryCreateSyncNoticeObject, patchOnStartup:true);
 
         private static void TryCreateSyncNoticeObject(Scene scene, LoadSceneMode mode)
         {
-            if (scene.name != "Menu" || HasSeenNotice)
+            if (HasSeenNotice)
+            {
+                oslPatcher.TryUnpatch();
+                return;
+            }
+
+            if (scene.name != "Menu")
                 return;
 
-            if (KatieSaveHelperModConfig.assetSubcriber.Value == true)
+            if (KatieConfig.Settings.assetSubcriber.Value == true)
                 MarkNoticeAsSeen();
             else
                 new GameObject("KatieSyncNotice").AddComponent<SyncNotice>();
@@ -96,10 +114,9 @@ namespace KatieSaveHelper
 
             UIFunctions.CreateConfirmationWindow(new ENAConfirmationWindow.CustomRequest(new Action(StartSubscribeAndSync), delegate
             {
-            }, "Enable Auto-Syncing?",
-            "Katie Save Helper can bundle optional fonts and other assets into the mod automatically by syncing them from a secure GitHub repository. " +
-            "This ensures everything works as intended without manual setup. You can turn this feature off at any time from the mod's config file. " +
-            "Do you want to enable auto-sync?",
+            }, "Enable Font Auto-Syncing?",
+            "If enabled, Katie Save Helper will automatically download and install any available default fonts for it's on-screen notifcations. " +
+            "You can disable this feature at any time from the mod's config file.",
             "<color=#67eb39>Enable</color>", "No, thanks", 10f),
             Resources.Load<GameObject>("UI/Confirmation Window"),
             saveSlot.GetComponentInParent<Canvas>());
@@ -109,8 +126,8 @@ namespace KatieSaveHelper
 
         private void StartSubscribeAndSync()
         {
-            KatieSaveHelperModConfig.assetSubcriber.Config.Value.Value = true;
-            KatieSaveHelperModConfig.SaveConfig();
+            KatieConfig.Settings.assetSubcriber.Config.Value.Value = true;
+            KatieConfig.SaveConfig();
 
             StartCoroutineSafe(RunAssetSyncCoroutine());
         }
@@ -119,7 +136,7 @@ namespace KatieSaveHelper
         {
             ToastController.TryQueueToast(new ToastInstance("Syncing assets with GitHub...", holdTime:5f));
 
-            Task<int> task = KatieAssetHandler.SyncAssetsAsync();
+            var task = KatieAssetHandler.SyncAssetsAsync();
 
             // Wait until the task completes
             while (!task.IsCompleted)

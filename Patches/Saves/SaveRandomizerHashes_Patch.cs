@@ -1,11 +1,12 @@
 ﻿using HarmonyLib;
 using JoelG.ENA4;
+using System.Collections;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine.SceneManagement;
 
 namespace KatieSaveHelper.Patches
 {
-    
     [HarmonyPatch(typeof(SaveRandomizerHashes))]
     public static class SaveRandomizerHashes_Patch
     {
@@ -13,7 +14,9 @@ namespace KatieSaveHelper.Patches
         private static readonly FieldInfo sessionHashField = AccessTools.Field(typeof(SaveRandomizerHashes), "PlaySessionHash");
         private static readonly PropertyInfo saveFileHashProp = AccessTools.Property(typeof(SaveRandomizerHashes), "SaveFileHash");
         private static readonly PropertyInfo sceneHashProp = AccessTools.Property(typeof(SaveRandomizerHashes), "SceneHash");
-        private static readonly OnSceneLoadPatch oslPatcher = new OnSceneLoadPatch(InjectCustomSeeds, patchOnStartup:true);
+        private static readonly OnSceneLoadPatch oslPatcher = new OnSceneLoadPatch(WaitToInjectSeeds, patchOnStartup: true);
+
+        public static readonly string seedInjectRoutineIdentifier = "KSH.Event.InjectCustomSeedsOnLaunch";
 
         // Bypass the unchangeable read-only field values when trying to read the current Session or Hardware hash
 
@@ -42,24 +45,48 @@ namespace KatieSaveHelper.Patches
 
         // Inject a custom generated Session and Hardware seed on Main Menu load if configured by the mod
 
-        public static void InjectCustomSeeds(Scene scene, LoadSceneMode mode)
+        public static void WaitToInjectSeeds(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != "Menu") return;
 
-            if (KatieSaveHelperModConfig.sessionSeedGeneratorType.Value != SeedGenerator.Random)
+            StartNewSeedInjector();
+
+            oslPatcher.TryUnpatch();
+        }
+
+
+        public static void StartNewSeedInjector()
+        {
+            StaticCoroutine.Start(sc => InjectCustomSeeds(sc), seedInjectRoutineIdentifier);
+        }
+        private static IEnumerator InjectCustomSeeds(StaticCoroutine scWrapper)
+        {
+            yield return StaticCoroutine.WaitForCancelAll(sc => (sc.Identifier == seedInjectRoutineIdentifier && sc != scWrapper) || sc.Identifier == MainMenuPanelGroup_Patch.menuEventTriggerRoutineIdentifier, scWrapper.CancelToken);
+            if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+
+            Task<(SeedGeneratorReturnCode returnCode, int seed)> sessionTask = null;
+            Task<(SeedGeneratorReturnCode returnCode, int seed)> hardwareTask = null;
+
+            if (KatieConfig.Settings.sessionSeedGeneratorType.Value != SeedGenerator.Random)
+                sessionTask = KatieUtil.GenerateSessionSeed(scWrapper.CancelToken);
+
+            if (KatieConfig.Settings.hardwareSeedGeneratorType.Value != SeedGenerator.Device)
+                hardwareTask = KatieUtil.GenerateHardwareSeed(scWrapper.CancelToken);
+
+            if (sessionTask != null)
             {
-                int newSeed = KatieUtil.GenerateSessionSeed().seed;
-                KatieUtil.EditSessionHash(newSeed);
+                yield return KatieUtil.WaitForTask(sessionTask);
+                if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+                KatieUtil.EditSessionHash(sessionTask.Result.seed);
                 PlayerRandomBlink_Patch.ResetBlinkChanceGenerator();
             }
 
-            if (KatieSaveHelperModConfig.hardwareSeedGeneratorType.Value != SeedGenerator.Device)
+            if (hardwareTask != null)
             {
-                int newSeed = KatieUtil.GenerateHardwareSeed().seed;
-                KatieUtil.EditHardwareHash(newSeed);
+                yield return KatieUtil.WaitForTask(hardwareTask);
+                if (scWrapper.CancelToken.IsCancellationRequested) yield break;
+                KatieUtil.EditHardwareHash(hardwareTask.Result.seed);
             }
-
-            oslPatcher.TryUnpatch();
         }
     }
 }

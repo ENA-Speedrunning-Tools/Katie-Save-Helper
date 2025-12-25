@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO.Compression;
@@ -23,12 +22,26 @@ namespace KatieSaveHelper
         private static readonly int shaCheckTimeout = 10;
         private static readonly int zipDownloadTimeout = 20;
 
-        public static readonly string dllDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        public static readonly string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), KatieSaveHelperMod.modGUID);
+        private static readonly FileHandler updateCacheFile = new FileHandler(Path.Combine(KatieUtil.appDataDir, $"cached_update.sha"), "KHS.Event.UpdateCacheFile");
 
-        public static readonly string updateCacheFile = Path.Combine(appDataDir, $"cached_update.sha");
-        public static readonly string assetDir = GetAssetDir();
-        public static readonly string tempDir = Path.Combine(Path.GetTempPath(), KatieSaveHelperMod.modGUID);
+        private static string _assetDir = null;
+        public static string assetDir
+        {
+            get
+            {
+                if (_assetDir != null) return _assetDir;
+
+                string path = Path.Combine(KatieUtil.dllDir, KatieMain.modGUID);
+
+                if (!KatieUtil.CanWriteHere(path))
+                    path = Path.Combine(KatieUtil.appDataDir, KatieMain.modGUID, "Assets");
+
+                _assetDir = path;
+
+                return path;
+            }
+        }
+        public static readonly string tempDir = Path.Combine(Path.GetTempPath(), KatieMain.modGUID);
         public static readonly string tempAssetZip = Path.Combine(tempDir, $"new_assets.zip");
         public static readonly string tempAssetDir = Path.Combine(tempDir, $"new_assets");
 
@@ -36,54 +49,16 @@ namespace KatieSaveHelper
 
         public static void OnStartup()
         {
-            if (KatieSaveHelperModConfig.assetSubcriber.Value)
+            if (KatieConfig.Settings.assetSubcriber.Value)
                 _ = SyncAssetsAsync(assetUpdateOverride: !Directory.Exists(assetDir));
             TryCreateDefaultAssetDir();
-        }
-
-        private static bool CanWriteHere(string dir, bool cleanAfter = true)
-        {
-            bool dirExisted = Directory.Exists(dir);
-            string testFile = Path.Combine(dir, Guid.NewGuid().ToString() + ".tmp");
-
-            try
-            {
-                if (!dirExisted)
-                    Directory.CreateDirectory(dir);
-
-                using (File.Create(testFile, 1, FileOptions.DeleteOnClose)) { }
-
-                return true;
-            }
-            catch (UnauthorizedAccessException) { }
-            catch (IOException) { }
-            finally
-            {
-                if (cleanAfter && !dirExisted && Directory.Exists(dir))
-                {
-                    try { Directory.Delete(dir, recursive: false); } catch { }
-                }
-            }
-
-            return false;
-        }
-
-        private static string GetAssetDir()
-        {
-            string candidate = Path.Combine(dllDir, KatieSaveHelperMod.modGUID);
-
-            if (CanWriteHere(candidate))
-                return candidate;
-
-            string fallback = Path.Combine(appDataDir, KatieSaveHelperMod.modGUID);
-            return fallback;
         }
 
         public static void TryCreateDefaultAssetDir()
         {
             string candidate = Path.Combine(assetDir, "Fonts");
 
-            CanWriteHere(candidate, cleanAfter:false);
+            KatieUtil.CanWriteHere(candidate, cleanAfter:false);
         }
 
         private static HttpClient CreateClient()
@@ -108,7 +83,7 @@ namespace KatieSaveHelper
         {
             string api = $"https://api.github.com/repos/{Owner}/{Repo}/commits/{Branch}";
 
-            Directory.CreateDirectory(appDataDir);
+            Directory.CreateDirectory(KatieUtil.appDataDir);
 
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(shaCheckTimeout)))
             {
@@ -141,7 +116,19 @@ namespace KatieSaveHelper
 
                 KatieLogger.Info("Syncing assets...");
 
-                string cachedSha = File.Exists(updateCacheFile) ? File.ReadAllText(updateCacheFile) : null;
+                string cachedSha = null;
+
+                if (File.Exists(updateCacheFile.filePath))
+                    await updateCacheFile.FileActionAsync(
+                        FileMode.Open,
+                        FileAccess.Read,
+                        fileAction: () =>
+                        {
+                            string text = File.ReadAllText(updateCacheFile.filePath);
+                            if (!string.IsNullOrEmpty(text))
+                                cachedSha = text;
+                        }
+                    );
 
                 if (latestSha == cachedSha && Directory.Exists(assetDir) && !assetUpdateOverride)
                 {
@@ -155,7 +142,13 @@ namespace KatieSaveHelper
 
                 if (success)
                 {
-                    File.WriteAllText(updateCacheFile, latestSha);
+                    await updateCacheFile.FileActionAsync(
+                        FileMode.OpenOrCreate,
+                        FileAccess.Write,
+                        fileAction: () => File.WriteAllText(updateCacheFile.filePath, latestSha),
+                        onFail: () => KatieLogger.Error("Failed to cache the asset update SHA")
+                    );
+
                     KatieLogger.Info($"Asset update complete!");
                     return 0;
                 }
@@ -359,7 +352,7 @@ namespace KatieSaveHelper
             }
             catch (Exception ex)
             {
-                KatieLogger.Error($"Exception while loading font '{fontName}': {ex}");
+                KatieLogger.Error($"Exception while loading font '{fontName}' : {ex}");
                 return null;
             }
         }

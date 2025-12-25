@@ -1,6 +1,10 @@
 ﻿using JoelG.ENA4;
 using System.Reflection;
 using HarmonyLib;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
+using LMirman.Utilities;
 
 namespace KatieSaveHelper.Patches
 {
@@ -11,32 +15,177 @@ namespace KatieSaveHelper.Patches
     {
         private static readonly FieldInfo saveHashField = AccessTools.Field(typeof(SaveFileData), "saveHash");
         private static readonly MethodInfo getGameFileMethod = AccessTools.Method(typeof(SaveFile), "GetGameFile");
-        static bool Prefix(int index)
+
+        private static void ResetGameFile(RemoteGameFile<SaveFileData> gameFile, int? setSeed = null)
         {
-            KatieUtil.TriggerCustomEvent(CustomEventType.OnCreateSave);
-
-            RemoteGameFile<SaveFileData> gameFile = (RemoteGameFile<SaveFileData>)getGameFileMethod.Invoke(null, new object[] { index });
-
             gameFile.Data = new SaveFileData();
 
-            int newSeed;
+            if (setSeed != null)
+                saveHashField.SetValue(gameFile.Data, setSeed.Value);
 
-            if (KatieSaveHelperModActions.customSeedOnReset.IsReady)
+            gameFile.ValidData = true;
+
+            if (KatieConfig.Settings.disableSaveFileEncryption.Value)
             {
-                newSeed = KatieSaveHelperModActions.customSeedOnReset.TakeValue();
-                ToastController.TryQueueAndLogToast($"Reset Save {index} with seed {newSeed}");
+                gameFile.WriteFileAsJsonDat();
             }
             else
             {
-                newSeed = KatieUtil.GenerateSaveSeed().seed;
+                gameFile.WriteFile(GameFile<SaveFileData>.FileType.Encrypted);
             }
+        }
 
-            saveHashField.SetValue(gameFile.Data, newSeed);
+        public static bool Prefix(int index)
+        {
+            RemoteGameFile<SaveFileData> gameFile = (RemoteGameFile<SaveFileData>)getGameFileMethod.Invoke(null, new object[] { index });
 
-            gameFile.ValidData = true;
-            gameFile.WriteFile();
+            ResetGameFile(gameFile);
 
             return false;
+        }
+
+        public static async Task<(SeedGeneratorReturnCode returnCode, int saveHash)> ResetSaveAsync(int index, CancellationToken token = default, bool triggerCustomEvent = true)
+        {
+            var tceCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            Task<KatieUtil.CustomEventGenerationResult> tceTask = null;
+            if (triggerCustomEvent)
+                tceTask = KatieUtil.GenerateCustomEventSeedsAsync(CustomEventType.OnCreateSave, tceCts.Token);
+
+            RemoteGameFile<SaveFileData> gameFile = (RemoteGameFile<SaveFileData>)getGameFileMethod.Invoke(null, new object[] { index });
+
+            try
+            {
+                var seedTuple = await KatieUtil.GenerateSaveSeed(token);
+                int newSeed = seedTuple.seed;
+
+                if (seedTuple.returnCode != SeedGeneratorReturnCode.Success && seedTuple.returnCode != SeedGeneratorReturnCode.TaskCancelled)
+                    tceCts.Cancel();
+
+                if (tceTask != null)
+                    await tceTask;
+
+                if (token.IsCancellationRequested) return (SeedGeneratorReturnCode.TaskCancelled, 0);
+                if (tceCts.IsCancellationRequested) return (seedTuple.returnCode, 0);
+
+                if (tceTask != null)
+                {
+                    if (tceTask.Result.HighestReturnCode == SeedGeneratorReturnCode.Success)
+                        KatieUtil.ApplyCustomEventResults(tceTask.Result);
+                    else
+                        return (tceTask.Result.HighestReturnCode, 0);
+                }
+
+                ResetGameFile(gameFile, newSeed);
+
+                return (SeedGeneratorReturnCode.Success, newSeed);
+            }
+            catch (TaskCanceledException)
+            {
+                return (SeedGeneratorReturnCode.TaskCancelled, 0);
+            }
+        }
+
+        public static async Task<(SeedGeneratorReturnCode returnCode, int saveHash)> ResetSaveAsync(int index, int? seed = null, CancellationToken token = default, bool triggerCustomEvent = true)
+        {
+            var tceCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            Task<KatieUtil.CustomEventGenerationResult> tceTask = null;
+            if (triggerCustomEvent)
+                tceTask = KatieUtil.GenerateCustomEventSeedsAsync(CustomEventType.OnCreateSave, tceCts.Token);
+
+            RemoteGameFile<SaveFileData> gameFile = (RemoteGameFile<SaveFileData>)getGameFileMethod.Invoke(null, new object[] { index });
+
+            try
+            {
+                (SeedGeneratorReturnCode returnCode, int seed)? seedTuple = null;
+                int newSeed;
+
+                if (seed != null)
+                {
+                    newSeed = seed.Value;
+                }
+                else
+                {
+                    seedTuple = await KatieUtil.GenerateSaveSeed(token);
+                    newSeed = seedTuple.Value.seed;
+                }
+
+                if (seedTuple != null && seedTuple.Value.returnCode != SeedGeneratorReturnCode.Success && seedTuple.Value.returnCode != SeedGeneratorReturnCode.TaskCancelled)
+                    tceCts.Cancel();
+
+                if (tceTask != null)
+                    await tceTask;
+
+                if (token.IsCancellationRequested) return (SeedGeneratorReturnCode.TaskCancelled, 0);
+                if (tceCts.IsCancellationRequested) return (seedTuple.Value.returnCode, 0);
+
+                if (tceTask != null)
+                {
+                    if (tceTask.Result.HighestReturnCode == SeedGeneratorReturnCode.Success)
+                        KatieUtil.ApplyCustomEventResults(tceTask.Result);
+                    else
+                        return (tceTask.Result.HighestReturnCode, 0);
+                }
+
+                ResetGameFile(gameFile, newSeed);
+
+                return (SeedGeneratorReturnCode.Success, newSeed);
+            }
+            catch (TaskCanceledException)
+            {
+                return (SeedGeneratorReturnCode.TaskCancelled, 0);
+            }
+        }
+
+        public static async Task<(SeedGeneratorReturnCode returnCode, int saveHash)> ResetSaveAsync(int index, Func<CancellationToken, Task<(SeedGeneratorReturnCode returnCode, int seed)>> seedGenerator = null, CancellationToken token = default, bool triggerCustomEvent = true)
+        {
+            var tceCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            Task<KatieUtil.CustomEventGenerationResult> tceTask = null;
+            if (triggerCustomEvent)
+                tceTask = KatieUtil.GenerateCustomEventSeedsAsync(CustomEventType.OnCreateSave, tceCts.Token);
+
+            RemoteGameFile<SaveFileData> gameFile = (RemoteGameFile<SaveFileData>)getGameFileMethod.Invoke(null, new object[] { index });
+
+            try
+            {
+                (SeedGeneratorReturnCode returnCode, int seed)? seedTuple = null;
+                int newSeed;
+
+                if (seedGenerator != null)
+                {
+                    seedTuple = await seedGenerator(token);
+                    newSeed = seedTuple.Value.seed;
+                }
+                else
+                {
+                    seedTuple = await KatieUtil.GenerateSaveSeed(token);
+                    newSeed = seedTuple.Value.seed;
+                }
+
+                if (seedTuple != null && seedTuple.Value.returnCode != SeedGeneratorReturnCode.Success && seedTuple.Value.returnCode != SeedGeneratorReturnCode.TaskCancelled)
+                    tceCts.Cancel();
+
+                if (tceTask != null)
+                    await tceTask;
+
+                if (token.IsCancellationRequested) return (SeedGeneratorReturnCode.TaskCancelled, 0);
+                if (tceCts.IsCancellationRequested) return (seedTuple.Value.returnCode, 0);
+
+                if (tceTask != null)
+                {
+                    if (tceTask.Result.HighestReturnCode == SeedGeneratorReturnCode.Success)
+                        KatieUtil.ApplyCustomEventResults(tceTask.Result);
+                    else
+                        return (tceTask.Result.HighestReturnCode, 0);
+                }
+
+                ResetGameFile(gameFile, newSeed);
+
+                return (SeedGeneratorReturnCode.Success, newSeed);
+            }
+            catch (TaskCanceledException)
+            {
+                return (SeedGeneratorReturnCode.TaskCancelled, 0);
+            }
         }
 
     }

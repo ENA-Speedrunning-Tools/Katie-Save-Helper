@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using JoelG.ENA4;
-using static JoelG.ENA4.SceneChanger;
 
 namespace KatieSaveHelper.Patches
 {
@@ -11,9 +10,9 @@ namespace KatieSaveHelper.Patches
     {
         public static bool Prefix(SceneChanger __instance)
         {
-            for (int i = ActiveTransitions.Count - 1; i >= 0; i--)
+            for (int i = SceneChanger.ActiveTransitions.Count - 1; i >= 0; i--)
             {
-                var tr = ActiveTransitions[i];
+                var tr = SceneChanger.ActiveTransitions[i];
                 if (tr == null) continue;
                 tr.CompleteEffect();
             }

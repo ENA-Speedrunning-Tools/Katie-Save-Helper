@@ -2,8 +2,6 @@
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
-using JoelG.ENA4;
-using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System.Linq;
 using System;
@@ -11,16 +9,16 @@ using System;
 namespace KatieSaveHelper
 {
     [BepInPlugin(modGUID, modName, modVersion)]
-    public class KatieSaveHelperMod : BaseUnityPlugin
+    public class KatieMain : BaseUnityPlugin
     {
         internal const string modGUID = "Zieraell.KatieSaveHelper";
         internal const string modName = "Katie Save Helper";
-        internal const string modVersion = "1.8.4.0";
+        internal const string modVersion = "1.9.0.0";
         internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         internal readonly Harmony harmony = new Harmony(modGUID);
 
-        internal static KatieSaveHelperMod Instance;
+        internal static KatieMain Instance;
 
         private static List<IKatieActionBase> cachedActiveActions = new List<IKatieActionBase>();
 
@@ -36,18 +34,21 @@ namespace KatieSaveHelper
             mls = Logger;
 
             // Subscribe to config loads
-            KatieSaveHelperModConfig.OnConfigLoaded += NotifyOnUpdate;
+            KatieConfig.OnConfigLoaded += NotifyOnUpdate;
 
-            KatieSaveHelperModConfig.LoadConfig();
+            // Subscribe to the application closing
+            Application.quitting += KatieSceneWarp.WriteEntranceCache;
 
             // Apply harmony patches
             harmony.PatchAll();
 
+            KatieConfig.LoadConfig();
+
+            // Try to load the Scene Entrance cache
+            KatieSceneWarp.LoadEntranceCache();
+
             // Set up scene load events
             OnSceneLoadPatch.ApplyStartupPatches();
-
-            // Set default toggle settings
-            KatieSaveHelperModActions.autoSaveDisabled = KatieSaveHelperModConfig.autoSaveDisabledByDefault.Value;
 
             // Sync assets folder with repo
             KatieAssetHandler.OnStartup();
@@ -80,7 +81,7 @@ namespace KatieSaveHelper
 
         private static void UpdateCachedActions()
         {
-            cachedActiveActions = KatieSaveHelperModConfig.allActiveActions.ToList();
+            cachedActiveActions = KatieConfig.allActiveActions.ToList();
         }
 
         private void NotifyOnUpdate()
@@ -91,8 +92,8 @@ namespace KatieSaveHelper
 
     internal static class KatieLogger
     {
-        public static readonly Action<string> Info = (message) => KatieSaveHelperMod.mls.LogInfo(message);
-        public static readonly Action<string> Warning = (message) => KatieSaveHelperMod.mls.LogWarning(message);
-        public static readonly Action<string> Error = (message) => KatieSaveHelperMod.mls.LogError(message);
+        public static readonly Action<string> Info = (message) => KatieMain.mls.LogInfo(message);
+        public static readonly Action<string> Warning = (message) => KatieMain.mls.LogWarning(message);
+        public static readonly Action<string> Error = (message) => KatieMain.mls.LogError(message);
     }
 }

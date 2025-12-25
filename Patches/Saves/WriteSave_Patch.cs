@@ -14,17 +14,17 @@ namespace KatieSaveHelper.Patches
     {
         private static readonly FieldInfo currentField = AccessTools.Field(typeof(SaveFile), "current");
         private static readonly FieldInfo currentFileSavedField = AccessTools.Field(typeof(SaveFile), "CurrentFileSaved");
-        static bool Prefix()
+        public static bool Prefix()
         {
-            if (KatieSaveHelperModActions.autoSaveDisabled && !KatieSaveHelperModActions.allowNextSaveAttempt)
+            if (KatieActions.autoSaveDisabled && !KatieActions.allowNextSaveAttempt)
                 return false;
 
-            KatieSaveHelperModActions.allowNextSaveAttempt = false;
+            KatieActions.allowNextSaveAttempt = false;
 
             RemoteGameFile<SaveFileData> current = (RemoteGameFile<SaveFileData>)currentField.GetValue(null);
 
             current.Data.Metadata.SetSavedTimeToNow();
-            if (KatieSaveHelperModConfig.disableSaveFileEncryption.Value)
+            if (KatieConfig.Settings.disableSaveFileEncryption.Value)
             {
                 current.WriteFileAsJsonDat();
             }

@@ -1,14 +1,16 @@
 ﻿using HarmonyLib;
 using JoelG.ENA4;
 using LMirman.Utilities;
+using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
+using System.Xml;
 
 namespace KatieSaveHelper.Patches
 {
-
     [HarmonyPatch(typeof(GameFile<SaveFileData>))]
     public static class GameFile_Patch
     {
@@ -22,6 +24,12 @@ namespace KatieSaveHelper.Patches
         private static readonly MethodInfo getDataAsJsonByteArrayMethod = AccessTools.Method(typeof(GameFile<SaveFileData>), "GetDataAsJsonByteArray");
         private static readonly MethodInfo peekFileMethod = AccessTools.Method(typeof(GameFile<SaveFileData>), "PeekFile");
 
+        public static byte[] GetDataAsJsonByteArray(this GameFile<SaveFileData> gameFile, Newtonsoft.Json.Formatting format = Newtonsoft.Json.Formatting.None)
+        {
+            string text = JsonConvert.SerializeObject(gameFile.Data, format, gameFile.jsonSerializeSettings);
+            return Encoding.UTF8.GetBytes(text);
+        }
+
         // Extension to write JSON data to a .dat file instead of a .json file
 
         public static void WriteFileAsJsonDat(this GameFile<SaveFileData> __instance)
@@ -29,7 +37,7 @@ namespace KatieSaveHelper.Patches
             if (!__instance.ValidData) return;
 
             string dataPath = (string)dataPathField.GetValue(__instance);
-            byte[] jsonByteArray = (byte[])getDataAsJsonByteArrayMethod.Invoke(__instance, null);
+            byte[] jsonByteArray = __instance.GetDataAsJsonByteArray(Newtonsoft.Json.Formatting.Indented);
             string fileDirectory = (string)fileDirectoryField.GetValue(__instance);
             var fileWrittenDelegate = fileWrittenField.GetValue(__instance) as Action<GameFile<SaveFileData>>;
 
@@ -45,7 +53,7 @@ namespace KatieSaveHelper.Patches
         [HarmonyPrefix]
         public static bool ReadFile_Prefix(object __instance, ref bool __result)
         {
-            if (__instance.GetType() != typeof(GameFile<SaveFileData>))
+            if (!(__instance is GameFile<SaveFileData> gameFile))
                 return true;
 
             var instance = (GameFile<SaveFileData>)__instance;
@@ -78,7 +86,7 @@ namespace KatieSaveHelper.Patches
         [HarmonyPrefix]
         public static bool PeekFile_Patch(object __instance, ref SaveFileData data, ref bool __result)
         {
-            if (__instance.GetType() != typeof(GameFile<SaveFileData>))
+            if (!(__instance is GameFile<SaveFileData> gameFile))
                 return true;
 
             var instance = (GameFile<SaveFileData>)__instance;
@@ -107,13 +115,13 @@ namespace KatieSaveHelper.Patches
             return false;
         }
 
-        // Prevent the game from automatically overwritting pre-existing save data on disk with Steam Remote Storage save data on launch
+        // Prevent the game from automatically overwritting pre-existing save data on disk with Steam Remote Storage save data on launch, if configured by the mod
 
         [HarmonyPatch("WriteFile", new Type[] { })]
         [HarmonyPrefix]
         public static bool WriteFile_Prefix(object __instance)
         {
-            if (!(__instance.GetType().IsGenericType && __instance.GetType().GetGenericTypeDefinition() == typeof(RemoteGameFile<>)) || KatieSaveHelperModConfig.disableRemoteSaveSync.Value == false)
+            if (!(__instance.GetType().IsGenericType && __instance.GetType().GetGenericTypeDefinition() == typeof(RemoteGameFile<>)) || KatieConfig.Settings.disableRemoteSaveSync.Value == false)
                 return true;
 
             var stackTrace = new StackTrace();
