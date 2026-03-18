@@ -13,7 +13,7 @@ namespace KatieSaveHelper
     {
         internal const string modGUID = "Zieraell.KatieSaveHelper";
         internal const string modName = "Katie Save Helper";
-        internal const string modVersion = "1.9.0.0";
+        internal const string modVersion = "1.9.1.0";
         internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         internal readonly Harmony harmony = new Harmony(modGUID);

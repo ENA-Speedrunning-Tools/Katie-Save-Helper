@@ -604,10 +604,15 @@ namespace KatieSaveHelper
 
         // Cutscene stuff
 
-        public static void StopAllCutscenes()
+        private static readonly FieldInfo currentField = AccessTools.Field(typeof(SaveFile), "current");
+        public static void StopAllCutscenes(bool keepGameState = true)
         {
             bool debugMode = KatieConfig.Settings.debugMode.Value;
             if (debugMode) KatieLogger.Info($"Stopping cutscenes...");
+
+            SaveFileData saveDataCopy = null;
+            if (keepGameState)
+                saveDataCopy = SaveFile.CurrentSave.Clone();
 
             // cancel any active Playable Directors
             var directors = Resources.FindObjectsOfTypeAll<PlayableDirector>();
@@ -639,6 +644,14 @@ namespace KatieSaveHelper
 
             // cancel any Froggy Call animation coroutines
             StaticCoroutine.StopAll(sc => sc.Identifier.Contains("PreEffectAnticipation"));
+
+            // restore copied game data if it exists
+            if (saveDataCopy != null)
+            {
+                if (debugMode) KatieLogger.Info("Restoring game data from snapshot");
+                var currentSave = (RemoteGameFile<SaveFileData>)currentField.GetValue(null);
+                currentSave.Data = saveDataCopy;
+            }
         }
 
         // Game object stuff
