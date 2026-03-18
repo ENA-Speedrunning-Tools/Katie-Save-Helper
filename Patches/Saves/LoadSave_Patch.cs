@@ -44,6 +44,15 @@ namespace KatieSaveHelper.Patches
             }
         }
 
+        public static void ApplyGameData(RemoteGameFile<SaveFileData> gameFile)
+        {
+            currentField.SetValue(null, gameFile);
+
+            //setSaveIndexMethod.Invoke(MetaSaveFile.Current, new object[] { clampedIndex });
+
+            CurrentFileLoadedEvent?.Invoke();
+        }
+
         public static async Task<(SeedGeneratorReturnCode returnCode, int saveHash)> LoadSaveAsync(int index, CancellationToken token = default, bool triggerCustomEvent = true, bool triggerReset = false)
         {
             try
@@ -121,7 +130,8 @@ namespace KatieSaveHelper.Patches
 
                 RemoteGameFile<SaveFileData> gameFile = (RemoteGameFile<SaveFileData>)getGameFileMethod.Invoke(null, new object[] { clampedIndex });
 
-                bool readSuccess = (bool)readFileMethod.Invoke(gameFile, null);
+                //bool readSuccess = (bool)readFileMethod.Invoke(gameFile, null);
+                bool readSuccess = gameFile.ReadFile();
 
                 int saveHash = 0;
 

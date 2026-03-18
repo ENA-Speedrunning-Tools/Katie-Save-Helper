@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
-[assembly: MelonInfo(typeof(KatieSaveHelper.KatieMain), "Katie Save Helper", "1.9.0", "Katelyndev0211 and Zieraell")]
+[assembly: MelonInfo(typeof(KatieSaveHelper.KatieMain), "Katie Save Helper", "1.9.1", "Katelyndev0211 and Zieraell")]
 
 namespace KatieSaveHelper
 {
@@ -12,7 +12,7 @@ namespace KatieSaveHelper
     {
         internal const string modGUID = "Zieraell.KatieSaveHelper";
         internal const string modName = "Katie Save Helper";
-        internal const string modVersion = "1.9.0.0";
+        internal const string modVersion = "1.9.1.0";
         internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         internal static readonly HarmonyLib.Harmony harmony = new HarmonyLib.Harmony(modGUID);

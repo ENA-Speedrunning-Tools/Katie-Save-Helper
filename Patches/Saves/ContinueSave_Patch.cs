@@ -30,7 +30,7 @@ namespace KatieSaveHelper.Patches
             return false;
         }
 
-        public static async Task<(bool success, SeedGeneratorReturnCode returnCode, int index, int saveHash)> ContinueSaveAsync(CancellationToken token = default, bool triggerReset = false, bool stopEvents = false, Transition? transition = null, KatieSceneChanger.Origin origin = KatieSceneChanger.Origin.Natural)
+        public static async Task<(bool success, SeedGeneratorReturnCode returnCode, int index, int saveHash)> ContinueSaveAsync(CancellationToken token = default, bool triggerReset = false, bool stopEvents = true, Transition? transition = null, KatieSceneChanger.Origin origin = KatieSceneChanger.Origin.Natural)
         {
             int currentSaveIndex = MetaSaveFile.Current.SaveIndex;
             var loadSaveTuple = await LoadSave_Patch.LoadSaveAsync(currentSaveIndex, token: token, triggerReset: triggerReset);
@@ -86,7 +86,7 @@ namespace KatieSaveHelper.Patches
             return (true, loadSaveTuple.returnCode, currentSaveIndex, loadSaveTuple.saveHash);
         }
 
-        public static async Task<(bool success, SeedGeneratorReturnCode returnCode, int index, int saveHash)> ContinueSaveAsync(Func<CancellationToken, Task<(SeedGeneratorReturnCode returnCode, int seed)>> seedGenerator, CancellationToken token = default, bool triggerReset = false, bool stopEvents = false, Transition? transition = null, KatieSceneChanger.Origin origin = KatieSceneChanger.Origin.Natural)
+        public static async Task<(bool success, SeedGeneratorReturnCode returnCode, int index, int saveHash)> ContinueSaveAsync(Func<CancellationToken, Task<(SeedGeneratorReturnCode returnCode, int seed)>> seedGenerator, CancellationToken token = default, bool triggerReset = false, bool stopEvents = true, Transition? transition = null, KatieSceneChanger.Origin origin = KatieSceneChanger.Origin.Natural)
         {
             int currentSaveIndex = MetaSaveFile.Current.SaveIndex;
             var loadSaveTuple = await LoadSave_Patch.LoadSaveAsync(currentSaveIndex, seedGenerator: seedGenerator, token: token, triggerReset: triggerReset);
