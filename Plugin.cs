@@ -5,6 +5,9 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using BepInEx.Bootstrap;
+using KatieSaveHelper.Features.Util;
+using JoelG.ENA4;
 
 namespace KatieSaveHelper
 {
@@ -13,14 +16,14 @@ namespace KatieSaveHelper
     {
         internal const string modGUID = "Zieraell.KatieSaveHelper";
         internal const string modName = "Katie Save Helper";
-        internal const string modVersion = "1.9.1.0";
+        internal const string modVersion = "1.9.2.0";
         internal const string modAuthors = "Katelyndev0211 and Zieraell";
 
         internal readonly Harmony harmony = new Harmony(modGUID);
 
         internal static KatieMain Instance;
 
-        private static List<IKatieActionBase> cachedActiveActions = new List<IKatieActionBase>();
+        private static List<IModActionBase> cachedActiveActions = new List<IModActionBase>();
 
         public static ManualLogSource mls;
 
@@ -42,6 +45,11 @@ namespace KatieSaveHelper
             // Apply harmony patches
             harmony.PatchAll();
 
+            // Disable default hotkeys if more than one mod is loaded
+            if (Chainloader.PluginInfos.Count > 1)
+                KatieConfig.DisableDefaults();
+
+            // Load the config
             KatieConfig.LoadConfig();
 
             // Try to load the Scene Entrance cache
@@ -68,7 +76,7 @@ namespace KatieSaveHelper
             if (!Input.anyKeyDown)
                 return;
 
-            foreach (IKatieActionBase action in cachedActiveActions)
+            foreach (IModActionBase action in cachedActiveActions)
             {
                 if (Input.GetKeyDown(action.Key))
                 {

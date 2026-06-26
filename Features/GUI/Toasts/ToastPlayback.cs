@@ -3,7 +3,7 @@ using System.Threading;
 using TMPro;
 using UnityEngine;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.API
 {
     public class ToastPlayback
     {

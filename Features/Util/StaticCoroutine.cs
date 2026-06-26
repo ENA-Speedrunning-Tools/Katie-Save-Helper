@@ -6,13 +6,10 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
-using System.Runtime.InteropServices;
 using System.Threading;
-using Steamworks;
 using System.Threading.Tasks;
-using UnityEngine.UI;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
     // Wrapper for the vanilla "Static Coroutine" system that keeps track of the routines that are active so that they can be cancelled later if needed
     public class StaticCoroutine

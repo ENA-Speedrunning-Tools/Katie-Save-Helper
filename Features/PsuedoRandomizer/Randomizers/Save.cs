@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 
 namespace KatieSaveHelper
 {
@@ -27,7 +26,7 @@ namespace KatieSaveHelper
         Single = 0,
         Multiple = 1
     }
-    internal class KatiePsuedoSaveRandomizer : KatiePsuedoRandomizerBase
+    internal class KatiePseudoSaveRandomizer : KatiePseudoRandomizerBase
     {
         public override string DisplayName => "Save Mode";
         private readonly int purgeGoalsIdHash = SaveRandomizer.GetStableHashCode("purge_goals");
@@ -45,35 +44,35 @@ namespace KatieSaveHelper
             new MultiEventInstance("Multiple", 50)
             );
 
-        public override List<PsuedoTargetEvent> GetNewTargetEventList()
+        public override List<PseudoTargetEvent> GetNewTargetEventList()
         {
-            var targetEventList = new List<PsuedoTargetEvent>();
+            var targetEventList = new List<PseudoTargetEvent>();
 
-            List<PurgeDirection> targetPurgeGoals = ParseGoalOrder(KatieConfig.Settings.psuedoRandomTargetPurgeRoomGoals, purgeGoalsFallbackSetting);
-            var targetPurgeObstaclesTuple = ObstacleCondition.ParseConditionTuple(KatieConfig.Settings.psuedoRandomTargetPurgeRoomObstacles.Value);
+            List<PurgeDirection> targetPurgeGoals = ParseGoalOrder(KatieConfig.Settings.pseudoRandomTargetPurgeRoomGoals, purgeGoalsFallbackSetting);
+            var targetPurgeObstaclesTuple = ObstacleCondition.ParseConditionTuple(KatieConfig.Settings.pseudoRandomTargetPurgeRoomObstacles.Value);
 
             bool purgeRoomsFlag = !targetPurgeGoals.All(c => c == PurgeDirection.Any);
             bool purgeObstaclesFlag = !targetPurgeObstaclesTuple.conditions.All(ob => ob.Logic == LogicType.Any) && targetPurgeObstaclesTuple.conditions.Count > 0;
 
             // Add Frank Door event if the name is not set to Any
 
-            if (KatieConfig.Settings.psuedoRandomTargetFrankDoor.Value != FrankDoor.Any)
+            if (KatieConfig.Settings.pseudoRandomTargetFrankDoor.Value != FrankDoor.Any)
             {
-                targetEventList.Add(PsuedoTargetEvent.Create("FrankDoor", frankDoor.Evaluate, (int)KatieConfig.Settings.psuedoRandomTargetFrankDoor.Value));
+                targetEventList.Add(PseudoTargetEvent.Create("FrankDoor", frankDoor.Evaluate, (int)KatieConfig.Settings.pseudoRandomTargetFrankDoor.Value));
             }
 
             // Add Taxi Driver Heads event if the head name is not set to Any
 
-            if (KatieConfig.Settings.psuedoRandomTargetTaxiHead.Value != TaxiHead.Any)
+            if (KatieConfig.Settings.pseudoRandomTargetTaxiHead.Value != TaxiHead.Any)
             {
-                targetEventList.Add(PsuedoTargetEvent.Create("TaxiHeads", taxiHeads.Evaluate, (int)KatieConfig.Settings.psuedoRandomTargetTaxiHead.Value));
+                targetEventList.Add(PseudoTargetEvent.Create("TaxiHeads", taxiHeads.Evaluate, (int)KatieConfig.Settings.pseudoRandomTargetTaxiHead.Value));
             }
 
             // Add Purge Special event if there is at least one 'Any' direction in the desired goal order, if purge obstacles has a single non-Any obstacle, and the configured obstacles setting uses any shorthand format
 
             if (targetPurgeGoals.Contains(PurgeDirection.Any) && purgeObstaclesFlag && targetPurgeObstaclesTuple.shorthandLevel > 0)
             {
-                targetEventList.Add(PsuedoTargetEvent.Create("PurgeSpecial", EvaluatePurgeSpecial, targetPurgeGoals, targetPurgeObstaclesTuple));
+                targetEventList.Add(PseudoTargetEvent.Create("PurgeSpecial", EvaluatePurgeSpecial, targetPurgeGoals, targetPurgeObstaclesTuple));
             }
             else
             {
@@ -81,7 +80,7 @@ namespace KatieSaveHelper
 
                 if (purgeRoomsFlag)
                 {
-                    targetEventList.Add(PsuedoTargetEvent.Create("PurgeRooms", EvaluatePurgeGoals, targetPurgeGoals));
+                    targetEventList.Add(PseudoTargetEvent.Create("PurgeRooms", EvaluatePurgeGoals, targetPurgeGoals));
                 }
 
                 // Add Purge Obstacles event if it has at least one entry and there is at least one non-Any obstacle
@@ -89,7 +88,7 @@ namespace KatieSaveHelper
                 if (purgeObstaclesFlag)
                 {
                     List<ObstacleCondition> targetPurgeObstacles = ObstacleCondition.ResolveConditionTuple(targetPurgeObstaclesTuple, targetPurgeGoals);
-                    targetEventList.Add(PsuedoTargetEvent.Create("PurgeObstacles", EvaluatePurgeObstacles, targetPurgeObstacles));
+                    targetEventList.Add(PseudoTargetEvent.Create("PurgeObstacles", EvaluatePurgeObstacles, targetPurgeObstacles));
                 }
             }
 
@@ -278,7 +277,7 @@ namespace KatieSaveHelper
             return (purgeGoals, purgeObstacles);
         }
 
-        private List<PurgeDirection> ParseGoalOrder(KatieSetting<string> stringSetting, string defaultValue = null)
+        private List<PurgeDirection> ParseGoalOrder(ModSetting<string> stringSetting, string defaultValue = null)
         {
             string input = defaultValue != null ? stringSetting.TryGetRealValue(defaultValue) : stringSetting.TryGetRealValue();
 

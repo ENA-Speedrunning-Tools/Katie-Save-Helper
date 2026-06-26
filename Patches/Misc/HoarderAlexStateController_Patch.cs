@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using HarmonyLib;
 using JoelG.ENA4;
 using JoelG.ENA4.Locations;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {

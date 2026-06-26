@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using JoelG.ENA4.Audio;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {

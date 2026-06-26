@@ -3,8 +3,9 @@ using TMPro;
 using System.Collections;
 using System.Linq;
 using System;
+using KatieSaveHelper.Features.Util;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.API
 {
     public static class ToastSettings
     {

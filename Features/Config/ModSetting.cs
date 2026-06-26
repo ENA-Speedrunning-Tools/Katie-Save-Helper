@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KatieSaveHelper
 {
-    public interface IKatieSetting
+    public interface IModSetting
     {
         string DisplayName { get; }
         string InternalName { get; }
@@ -11,30 +11,30 @@ namespace KatieSaveHelper
         void SetValuesFromConfig();
     }
 
-    public class KatieSetting<T> : IKatieSetting
+    public class ModSetting<T> : IModSetting
     {
         public string DisplayName { get; private set; }
         public string InternalName { get; private set; }
         public T Value { get; private set; }
         public T DefaultValue { get; private set; }
-        public KatieSettingConfig<T> Config { get; private set; }
+        public ModSettingConfig<T> Config { get; private set; }
 
-        public KatieSetting(string displayName, T defaultValue)
+        public ModSetting(string displayName, T defaultValue)
         {
             DisplayName = displayName;
             InternalName = DisplayName.Replace(" ", "");
             DefaultValue = defaultValue;
             Value = defaultValue;
-            Config = new KatieSettingConfig<T>();
+            Config = new ModSettingConfig<T>();
         }
 
-        public KatieSetting(string displayName, string internalName, T defaultValue)
+        public ModSetting(string displayName, string internalName, T defaultValue)
         {
             DisplayName = displayName;
             InternalName = internalName;
             DefaultValue = defaultValue;
             Value = defaultValue;
-            Config = new KatieSettingConfig<T>();
+            Config = new ModSettingConfig<T>();
         }
 
         public object GetValueAsObject() => Value;
@@ -56,9 +56,9 @@ namespace KatieSaveHelper
 
     }
 
-    public static class KatieSettingExtensions
+    public static class ModSettingExtensions
     {
-        public static string TryGetRealValue(this KatieSetting<string> setting)
+        public static string TryGetRealValue(this ModSetting<string> setting)
         {
             if (string.IsNullOrEmpty(setting.Value))
             {
@@ -68,7 +68,7 @@ namespace KatieSaveHelper
             return setting.Value;
         }
 
-        public static string TryGetRealValue(this KatieSetting<string> setting, string defaultValue)
+        public static string TryGetRealValue(this ModSetting<string> setting, string defaultValue)
         {
             if (string.IsNullOrEmpty(setting.Value))
             {
@@ -78,7 +78,7 @@ namespace KatieSaveHelper
             return setting.Value;
         }
 
-        public static (bool success, Color color) TryGetColorFromValue(this KatieSetting<string> setting)
+        public static (bool success, Color color) TryGetColorFromValue(this ModSetting<string> setting)
         {
             string hex = setting.Value;
 
@@ -100,7 +100,7 @@ namespace KatieSaveHelper
             return (false, Color.black);
         }
 
-        public static (bool success, Color color) TryGetColorFromValue(this KatieSetting<string> setting, string defaultValue)
+        public static (bool success, Color color) TryGetColorFromValue(this ModSetting<string> setting, string defaultValue)
         {
             string hex = setting.Value;
 
@@ -123,7 +123,7 @@ namespace KatieSaveHelper
         }
     }
 
-    public class KatieSettingConfig<T>
+    public class ModSettingConfig<T>
     {
         public ConfigEntry<T> Value = default;
     }

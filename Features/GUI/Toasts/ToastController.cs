@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System;
+using KatieSaveHelper.Features.Util;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.API
 {
     public class ToastController : MonoBehaviour
     {

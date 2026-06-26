@@ -4,6 +4,7 @@ using System.Collections;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine.SceneManagement;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {

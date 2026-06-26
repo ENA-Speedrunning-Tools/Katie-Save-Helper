@@ -7,6 +7,8 @@ using TMPro;
 using System.Reflection;
 using System.IO;
 using BepInEx;
+using KatieSaveHelper.Features.Util;
+using KatieSaveHelper.Features.API;
 
 namespace KatieSaveHelper
 {
@@ -15,7 +17,7 @@ namespace KatieSaveHelper
     public enum SeedGenerator
     {
         Random,
-        PsuedoRandom,
+        PseudoRandom,
         Static,
         Device
     }
@@ -46,117 +48,138 @@ namespace KatieSaveHelper
             "KSH.Event.Config"
             );
 
-        internal static List<IKatieSetting> allSettings
+        internal static List<IModSetting> allSettings
         {
             get
             {
-                var settingList = new List<IKatieSetting>();
+                var settingList = new List<IModSetting>();
                 var fields = typeof(Settings).GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
                 foreach (var field in fields)
                 {
-                    if (typeof(IKatieSetting).IsAssignableFrom(field.FieldType))
-                        if (field.GetValue(null) is IKatieSetting setting)
+                    if (typeof(IModSetting).IsAssignableFrom(field.FieldType))
+                        if (field.GetValue(null) is IModSetting setting)
                             settingList.Add(setting);
                 }
                 return settingList;
             }
         }
-        internal static List<IKatieActionBase> allActions
+        internal static List<IModActionBase> allActions
         {
             get
             {
-                var actionList = new List<IKatieActionBase>();
+                var actionList = new List<IModActionBase>();
                 var fields = typeof(Settings).GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
                 foreach (var field in fields)
                 {
-                    if (typeof(IKatieActionBase).IsAssignableFrom(field.FieldType))
-                        if (field.GetValue(null) is IKatieActionBase action)
+                    if (typeof(IModActionBase).IsAssignableFrom(field.FieldType))
+                        if (field.GetValue(null) is IModActionBase action)
                             actionList.Add(action);
                 }
                 return actionList;
             }
         }
-        internal static IEnumerable<IKatieActionBase> allTransitionActions => allActions.Where(action => action is KatieTransitionAction);
-        internal static IEnumerable<IKatieActionBase> allActiveActions => allActions.Where(action => action.Key != KeyCode.None);
-        internal static IEnumerable<IKatieActionBase> allActiveTransitionActions => allActiveActions.Where(action => action is KatieTransitionAction);
+
+        internal static IEnumerable<IModActionBase> allActiveActions => allActions.Where(action => action.Key != KeyCode.None);
 
         internal static class Settings
         {
-            internal static KatieSetting<bool> autoSaveDisabledByDefault = new KatieSetting<bool>("Game Auto Saving Disabled By Default", false);
-            internal static KatieSetting<SeedGenerator> saveSeedGeneratorType = new KatieSetting<SeedGenerator>("Save Seed Generator Type", SeedGenerator.Random);
-            internal static KatieSetting<SeedGenerator> sessionSeedGeneratorType = new KatieSetting<SeedGenerator>("Session Seed Generator Type", SeedGenerator.Random);
-            internal static KatieSetting<SeedGenerator> hardwareSeedGeneratorType = new KatieSetting<SeedGenerator>("Hardware Seed Generator Type", SeedGenerator.Device);
-            internal static KatieSetting<CustomEventType> regenerateSessionSeed = new KatieSetting<CustomEventType>("Regenerate Session Seed", CustomEventType.OnHotkey);
-            internal static KatieSetting<CustomEventType> regenerateHardwareSeed = new KatieSetting<CustomEventType>("Regenerate Hardware Seed", CustomEventType.OnHotkey);
-            internal static KatieSetting<CustomEventType> resetBlinkRandomizer = new KatieSetting<CustomEventType>("Reset Game Blink Randomizer", CustomEventType.OnHotkey);
-            internal static KatieSetting<int> staticSaveSeed = new KatieSetting<int>("Static Save Seed", 0);
-            internal static KatieSetting<int> staticSessionSeed = new KatieSetting<int>("Static Session Seed", 0);
-            internal static KatieSetting<int> staticHardwareSeed = new KatieSetting<int>("Static Hardware Seed", 0);
-            internal static KatieSetting<MainMenuSkipType> skipMainMenuIntro = new KatieSetting<MainMenuSkipType>("Skip Main Menu Intro", MainMenuSkipType.Never);
-            internal static KatieSetting<bool> disableReturnToMainMenuPopup = new KatieSetting<bool>("Disable Return To Main Menu Popup", false);
-            internal static KatieSetting<bool> disableCreateSavePopup = new KatieSetting<bool>("Disable Create Save Popup", false);
-            internal static KatieSetting<bool> disableResetSavePopup = new KatieSetting<bool>("Disable Reset Save Popup", false);
-            internal static KatieSetting<bool> disableSaveSelectDelay = new KatieSetting<bool>("Disable Save Select Delay", false);
-            internal static KatieSetting<bool> disableSaveFileLockAfterCompletion = new KatieSetting<bool>("Disable Save File Lock After Completion", false);
-            internal static KatieSetting<bool> disableSaveFileEncryption = new KatieSetting<bool>("Disable Save File Encryption", false);
-            internal static KatieSetting<bool> disableRemoteSaveSync = new KatieSetting<bool>("Disable Steam Remote Save Sync", false);
+            internal static Transition baseTransition
+            {
+                get
+                {
+                    var colorTuple = baseTransitionColor.TryGetColorFromValue();
+                    var color = colorTuple.success ? colorTuple.color : Color.black;
 
-            internal static KatieSetting<bool> psuedoRandomNaturalSeedsOnly = new KatieSetting<bool>("Psuedo Randomizer Generate Natural Seeds Only", "PsuedoRandomizer_General_GenerateNaturalSeedsOnly", true);
-            internal static KatieSetting<long> psuedoRandomMaxAttempts = new KatieSetting<long>("Psuedo Randomizer Search Attempt Limit", "PsuedoRandomizer_General_SearchAttemptLimit", 1000000);
-            internal static KatieSetting<FrankDoor> psuedoRandomTargetFrankDoor = new KatieSetting<FrankDoor>("Psuedo Randomizer Target Frank Door", "PsuedoRandomizer_SaveMode_FrankDoor_Target", FrankDoor.Any);
-            internal static KatieSetting<TaxiHead> psuedoRandomTargetTaxiHead = new KatieSetting<TaxiHead>("Psuedo Randomizer Target Taxi Head", "PsuedoRandomizer_SaveMode_TaxiHead_Target", TaxiHead.Socio);
-            internal static KatieSetting<string> psuedoRandomTargetPurgeRoomGoals = new KatieSetting<string>("Psuedo Randomizer Target Purge Goals", "PsuedoRandomizer_SaveMode_PurgeGoals_Target", "*RLRLRL");
-            internal static KatieSetting<string> psuedoRandomTargetPurgeRoomObstacles = new KatieSetting<string>("Psuedo Randomizer Target Purge Obstacles", "PsuedoRandomizer_SaveMode_PurgeObstacles_Target", "**Any, !WanderingFish");
-            internal static KatieSetting<string> psuedoRandomTargetBlinkAttempt = new KatieSetting<string>("Psuedo Randomizer Target First Blink Attempt", "PsuedoRandomizer_SessionMode_FirstBlinkAttempt_Target", "1");
-            internal static KatieSetting<bool> psuedoRandomBlinkAssumeInCore = new KatieSetting<bool>("Psuedo Randomizer Assume Blink In Core", "PsuedoRandomizer_SessionMode_FirstBlinkAttempt_AssumeInCore", false);
-            internal static KatieSetting<EnaTaxiMood> psuedoRandomEnaTaxiMood = new KatieSetting<EnaTaxiMood>("Psuedo Randomizer Target Ena Taxi Mood", "PsuedoRandomizer_HardwareMode_EnaTaxiMood_Target", EnaTaxiMood.Meanie);
+                    float fadeInTime = Mathf.Max(0f, baseTransitionFadeInTime.Value);
+                    float fadeOutTime = Mathf.Max(0f, baseTransitionFadeOutTime.Value);
 
-            internal static KatieSetting<bool> showToasts = new KatieSetting<bool>("Show Toast Notifications", true);
-            internal static KatieSetting<string> toastFontFileName = new KatieSetting<string>("Toast Font File Name", "Toast_FontFileName", "RuneScape-ENA");
-            internal static KatieSetting<int> toastFontSize = new KatieSetting<int>("Toast Font Size", "Toast_FontSize", 36);
-            internal static KatieSetting<string> toastFontColor = new KatieSetting<string>("Toast Font Color", "Toast_FontColor", "#FFFFFF");
-            internal static KatieSetting<TextAlignmentOptions> toastAlignment = new KatieSetting<TextAlignmentOptions>("Toast Screen Position", "Toast_ScreenPosition", TextAlignmentOptions.TopRight);
-            internal static KatieSetting<int> toastOutlineWidth = new KatieSetting<int>("Toast Outline Width", "Toast_OutlineWidth", 5);
-            internal static KatieSetting<string> toastOutlineColor = new KatieSetting<string>("Toast Outline Color", "Toast_OutlineColor", "#000000");
-            internal static KatieSetting<int> toastOpacity = new KatieSetting<int>("Toast Opacity", "Toast_Opacity", 100);
-            internal static KatieSetting<float> toastFadeInTime = new KatieSetting<float>("Toast Fade-In Time", "Toast_FadeInTime", 0.25f);
-            internal static KatieSetting<float> toastFadeOutTime = new KatieSetting<float>("Toast Fade-Out Time", "Toast_FadeOutTime", 0.25f);
-            internal static KatieSetting<float> toastHoldTime = new KatieSetting<float>("Toast Hold Time", "Toast_HoldTime", 1.50f);
-            internal static KatieSetting<float> toastGapTime = new KatieSetting<float>("Toast Gap Time", "Toast_GapTime", 0.25f);
+                    return new Transition(
+                        baseTransitionType.Value,
+                        color,
+                        fadeInTime,
+                        fadeOutTime
+                        );
+                }
+            }
 
-            internal static KatieSetting<bool> notifyOnFirstBlinkAttempts = new KatieSetting<bool>("Notify On First Blink Attempts", false);
-            internal static KatieSetting<bool> notifyOnSimulatedAchievements = new KatieSetting<bool>("Notify On Simulated Achievements", false);
-            internal static KatieSetting<float> simulatedAchievementToastHoldTime = new KatieSetting<float>("Simulated Achievement Toast Hold Time", "SimulatedAchievementToast_HoldTime", 5f);
-            internal static KatieSetting<CustomEventType> resetSimulatedAchievements = new KatieSetting<CustomEventType>("Reset Simulated Achievements", CustomEventType.OnHotkey);
-            internal static KatieSetting<bool> logConfigOnReload = new KatieSetting<bool>("Log Config On Reload", true);
-            internal static KatieSetting<bool> assetSubcriber = new KatieSetting<bool>("Subscribe To Asset Updates", false);
-            internal static KatieSetting<bool> debugMode = new KatieSetting<bool>("Debug Mode", false);
+            internal static ModSetting<bool> autoSaveDisabledByDefault = new ModSetting<bool>("Game Auto Saving Disabled By Default", false);
+            internal static ModSetting<SeedGenerator> saveSeedGeneratorType = new ModSetting<SeedGenerator>("Save Seed Generator Type", "SeedType_Save_Generator_Type", SeedGenerator.Random);
+            internal static ModSetting<SeedGenerator> sessionSeedGeneratorType = new ModSetting<SeedGenerator>("Session Seed Generator Type", "SeedType_Session_Generator_Type", SeedGenerator.Random);
+            internal static ModSetting<SeedGenerator> hardwareSeedGeneratorType = new ModSetting<SeedGenerator>("Hardware Seed Generator Type", "SeedType_Hardware_Generator_Type", SeedGenerator.Device);
+            internal static ModSetting<CustomEventType> regenerateSessionSeed = new ModSetting<CustomEventType>("Regenerate Session Seed Event Trigger", "SeedType_Session_RegenerateSeed_EventTrigger", CustomEventType.OnHotkey);
+            internal static ModSetting<CustomEventType> regenerateHardwareSeed = new ModSetting<CustomEventType>("Regenerate Hardware Seed Event Trigger", "SeedType_Hardware_RegenerateSeed_EventTrigger", CustomEventType.OnHotkey);
+            internal static ModSetting<CustomEventType> resetBlinkRandomizer = new ModSetting<CustomEventType>("Reset Game Blink Randomizer Event Trigger", "ResetGameBlinkRandomizer_EventTrigger", CustomEventType.OnHotkey);
+            internal static ModSetting<int> staticSaveSeed = new ModSetting<int>("Static Save Seed Value", "SeedType_Save_Generator_StaticSeedValue", 0);
+            internal static ModSetting<int> staticSessionSeed = new ModSetting<int>("Static Session Seed Value", "SeedType_Session_Generator_StaticSeedValue", 0);
+            internal static ModSetting<int> staticHardwareSeed = new ModSetting<int>("Static Hardware Seed Value", "SeedType_Hardware_Generator_StaticSeedValue", 0);
+            internal static ModSetting<MainMenuSkipType> skipMainMenuIntro = new ModSetting<MainMenuSkipType>("Skip Main Menu Intro", MainMenuSkipType.Never);
+            internal static ModSetting<bool> disableReturnToMainMenuPopup = new ModSetting<bool>("Disable Return To Main Menu Popup", false);
+            internal static ModSetting<bool> disableCreateSavePopup = new ModSetting<bool>("Disable Create Save Popup", false);
+            internal static ModSetting<bool> disableResetSavePopup = new ModSetting<bool>("Disable Reset Save Popup", false);
+            internal static ModSetting<bool> disableSaveSelectDelay = new ModSetting<bool>("Disable Save Select Delay", false);
+            internal static ModSetting<bool> disableSaveFileLockAfterCompletion = new ModSetting<bool>("Disable Save File Lock After Completion", false);
+            internal static ModSetting<bool> disableSaveFileEncryption = new ModSetting<bool>("Disable Save File Encryption", "DisableFileEncryption_GameSave", false);
+            internal static ModSetting<bool> disableMetaSaveFileEncryption = new ModSetting<bool>("Disable Meta Save File Encryption", "DisableFileEncryption_MetaSave", false);
+            internal static ModSetting<bool> disableRemoteSaveSync = new ModSetting<bool>("Disable Steam Remote Save Sync", false);
 
-            internal static KatieAction reloadConfig = new KatieAction("Reload Config", KatieActions.reloadConfig, KeyCode.F4, customCoroutineGroup: configFile.groupIdentifier);
-            internal static KatieAction quickSave = new KatieAction("Quick Save", KatieActions.quickSave, KeyCode.F1);
-            internal static KatieAction logCurrentSeedInfo = new KatieAction("Log Current Seed Info", KatieActions.logCurrentSeedInfo, KeyCode.None);
-            internal static KatieAction toggleAutoSave = new KatieAction("Toggle Game Auto Saving", KatieActions.toggleAutoSave, KeyCode.None);
-            internal static KatieAction regenerateSessionSeedAction = new KatieAction("Regenerate Session Seed", KatieActions.regenerateSessionSeed, KeyCode.None, "RegenerateSeed.Session");
-            internal static KatieAction regenerateHardwareSeedAction = new KatieAction("Regenerate Hardware Seed", KatieActions.regenerateHardwareSeed, KeyCode.None, "RegenerateSeed.Hardware");
-            internal static KatieAction resetGameBlinkRandomizerAction = new KatieAction("Reset Game Blink Randomizer", KatieActions.resetGameBlinkRandomizer, KeyCode.None);
-            internal static KatieAction resetSimulatedAchievementsAction = new KatieAction("Reset Simulated Achievements", KatieActions.resetSimulatedAchievements, KeyCode.None);
+            internal static ModSetting<bool> pseudoRandomNaturalSeedsOnly = new ModSetting<bool>("Pseudo Randomizer Generate Natural Seeds Only", "PseudoRandomizer_General_GenerateNaturalSeedsOnly", true);
+            internal static ModSetting<long> pseudoRandomMaxAttempts = new ModSetting<long>("Pseudo Randomizer Search Attempt Limit", "PseudoRandomizer_General_SearchAttemptLimit", 1000000);
+            internal static ModSetting<FrankDoor> pseudoRandomTargetFrankDoor = new ModSetting<FrankDoor>("Pseudo Randomizer Target Frank Door", "PseudoRandomizer_SaveMode_FrankDoor_Target", FrankDoor.Any);
+            internal static ModSetting<TaxiHead> pseudoRandomTargetTaxiHead = new ModSetting<TaxiHead>("Pseudo Randomizer Target Taxi Head", "PseudoRandomizer_SaveMode_TaxiHead_Target", TaxiHead.Socio);
+            internal static ModSetting<string> pseudoRandomTargetPurgeRoomGoals = new ModSetting<string>("Pseudo Randomizer Target Purge Goals", "PseudoRandomizer_SaveMode_PurgeGoals_Target", "*RLRLRL");
+            internal static ModSetting<string> pseudoRandomTargetPurgeRoomObstacles = new ModSetting<string>("Pseudo Randomizer Target Purge Obstacles", "PseudoRandomizer_SaveMode_PurgeObstacles_Target", "**Any, !WanderingFish");
+            internal static ModSetting<string> pseudoRandomTargetBlinkAttempt = new ModSetting<string>("Pseudo Randomizer Target First Blink Attempt", "PseudoRandomizer_SessionMode_FirstBlinkAttempt_Target", "1");
+            internal static ModSetting<bool> pseudoRandomBlinkAssumeInCore = new ModSetting<bool>("Pseudo Randomizer Assume Blink In Core", "PseudoRandomizer_SessionMode_FirstBlinkAttempt_AssumeInCore", false);
+            internal static ModSetting<EnaTaxiMood> pseudoRandomEnaTaxiMood = new ModSetting<EnaTaxiMood>("Pseudo Randomizer Target Ena Taxi Mood", "PseudoRandomizer_HardwareMode_EnaTaxiMood_Target", EnaTaxiMood.Meanie);
+
+            internal static ModSetting<bool> showToasts = new ModSetting<bool>("Show Toast Notifications", true);
+            internal static ModSetting<string> toastFontFileName = new ModSetting<string>("Toast Font File Name", "Toast_FontFileName", "RuneScape-ENA");
+            internal static ModSetting<int> toastFontSize = new ModSetting<int>("Toast Font Size", "Toast_FontSize", 36);
+            internal static ModSetting<string> toastFontColor = new ModSetting<string>("Toast Font Color", "Toast_FontColor", "#FFFFFF");
+            internal static ModSetting<TextAlignmentOptions> toastAlignment = new ModSetting<TextAlignmentOptions>("Toast Screen Position", "Toast_ScreenPosition", TextAlignmentOptions.TopRight);
+            internal static ModSetting<int> toastOutlineWidth = new ModSetting<int>("Toast Outline Width", "Toast_OutlineWidth", 5);
+            internal static ModSetting<string> toastOutlineColor = new ModSetting<string>("Toast Outline Color", "Toast_OutlineColor", "#000000");
+            internal static ModSetting<int> toastOpacity = new ModSetting<int>("Toast Opacity", "Toast_Opacity", 100);
+            internal static ModSetting<float> toastFadeInTime = new ModSetting<float>("Toast Fade-In Time", "Toast_FadeInTime", 0.25f);
+            internal static ModSetting<float> toastFadeOutTime = new ModSetting<float>("Toast Fade-Out Time", "Toast_FadeOutTime", 0.25f);
+            internal static ModSetting<float> toastHoldTime = new ModSetting<float>("Toast Hold Time", "Toast_HoldTime", 1.50f);
+            internal static ModSetting<float> toastGapTime = new ModSetting<float>("Toast Gap Time", "Toast_GapTime", 0.25f);
+
+            internal static ModSetting<SceneChanger.TransitionType> baseTransitionType = new ModSetting<SceneChanger.TransitionType>("Hotkey Scene Transition Type", "HotkeySceneTransition_Type", SceneChanger.TransitionType.FadeToColor);
+            internal static ModSetting<string> baseTransitionColor = new ModSetting<string>("Hotkey Scene Transition Color", "HotkeySceneTransition_Color", "#000000");
+            internal static ModSetting<float> baseTransitionFadeInTime = new ModSetting<float>("Hotkey Scene Transition Fade In Time", "HotkeySceneTransition_FadeInTime", 0.5f);
+            internal static ModSetting<float> baseTransitionFadeOutTime = new ModSetting<float>("Hotkey Scene Transition Fade Out Time", "HotkeySceneTransition_FadeOutTime", 0.5f);
+            internal static ModSetting<bool> notifyOnFirstBlinkAttempts = new ModSetting<bool>("Notify On First Blink Attempts", false);
+            internal static ModSetting<bool> notifyOnSimulatedAchievements = new ModSetting<bool>("Notify On Simulated Achievements", false);
+            internal static ModSetting<float> simulatedAchievementToastHoldTime = new ModSetting<float>("Simulated Achievement Toast Hold Time", "SimulatedAchievementToast_HoldTime", 5f);
+            internal static ModSetting<bool> logConfigOnReload = new ModSetting<bool>("Log Config On Reload", true);
+            internal static ModSetting<bool> assetSubcriber = new ModSetting<bool>("Subscribe To Asset Updates", false);
+            internal static ModSetting<bool> debugMode = new ModSetting<bool>("Debug Mode", false);
+
+            internal static ModAction reloadConfig = new ModAction("Reload Config", ModActions.reloadConfig, KeyCode.F4, customCoroutineGroup: configFile.groupIdentifier);
+            internal static ModAction quickSave = new ModAction("Quick Save", ModActions.quickSave, KeyCode.F1);
+            internal static ModAction logCurrentSeedInfo = new ModAction("Log Current Seed Info", ModActions.logCurrentSeedInfo, KeyCode.None);
+            internal static ModAction toggleAutoSave = new ModAction("Toggle Game Auto Saving", ModActions.toggleAutoSave, KeyCode.None);
+            internal static ModAction regenerateSessionSeedAction = new ModAction("Regenerate Session Seed", ModActions.regenerateSessionSeed, KeyCode.None, "RegenerateSeed.Session");
+            internal static ModAction regenerateHardwareSeedAction = new ModAction("Regenerate Hardware Seed", ModActions.regenerateHardwareSeed, KeyCode.None, "RegenerateSeed.Hardware");
+            internal static ModAction resetGameBlinkRandomizerAction = new ModAction("Reset Game Blink Randomizer", ModActions.resetGameBlinkRandomizer, KeyCode.None);
 
             internal static readonly Transition defaultTransition = new Transition(SceneChanger.TransitionType.FadeToColor, Color.black, 0.5f, 0.5f);
 
-            internal static KatieTransitionAction exitToSaveSelect = new KatieTransitionAction("Exit To Save Select", KatieActions.exitToSaveSelect, KeyCode.None, defaultTransition);
-            internal static KatieTransitionAction exitToSaveSelectAndEraseSave = new KatieTransitionAction("Exit To Save Select And Erase Save", KatieActions.exitToSaveSelectAndEraseSave, KeyCode.None, defaultTransition);
-            internal static KatieTransitionAction warpToNextScene = new KatieTransitionAction("Warp To Next Scene", KatieActions.warpToNextScene, KeyCode.None, defaultTransition);
-            internal static KatieTransitionAction warpToPrevScene = new KatieTransitionAction("Warp To Previous Scene", KatieActions.warpToPrevScene, KeyCode.None, defaultTransition);
-            internal static KatieTransitionAction warpToNextEntrance = new KatieTransitionAction("Warp To Next Entrance", KatieActions.warpToNextEntrance, KeyCode.None, defaultTransition);
-            internal static KatieTransitionAction warpToPrevEntrance = new KatieTransitionAction("Warp To Previous Entrance", KatieActions.warpToPrevEntrance, KeyCode.None, defaultTransition);
+            internal static ModAction exitToSaveSelect = new ModAction("Exit To Save Select", ModActions.exitToSaveSelect, KeyCode.None);
+            internal static ModAction exitToSaveSelectAndEraseSave = new ModAction("Exit To Save Select And Erase Save", ModActions.exitToSaveSelectAndEraseSave, KeyCode.None);
+            internal static ModAction warpToNextScene = new ModAction("Warp To Next Scene", ModActions.warpToNextScene, KeyCode.None);
+            internal static ModAction warpToPrevScene = new ModAction("Warp To Previous Scene", ModActions.warpToPrevScene, KeyCode.None);
+            internal static ModAction warpToNextEntrance = new ModAction("Warp To Next Entrance", ModActions.warpToNextEntrance, KeyCode.None);
+            internal static ModAction warpToPrevEntrance = new ModAction("Warp To Previous Entrance", ModActions.warpToPrevEntrance, KeyCode.None);
 
-            internal static KatieTransitionAction reloadSaveWithFileSeed = new KatieTransitionAction("Reload Save With File Seed", KatieActions.reloadSaveWithFileSeed, KeyCode.F2, defaultTransition, "SaveReloader.Reload.WithFile");
-            internal static KatieTransitionAction reloadSaveWithCurrentSeed = new KatieTransitionAction("Reload Save With Current Seed", KatieActions.reloadSaveWithCurrentSeed, KeyCode.None, defaultTransition, "SaveReloader.Reload.WithCurrent");
-            internal static KatieTransitionAction reloadSaveWithNewSeed = new KatieTransitionAction("Reload Save With New Seed", KatieActions.reloadSaveWithNewSeed, KeyCode.None, defaultTransition, "SaveReloader.Reload.WithNew");
+            internal static ModAction reloadSaveWithFileSeed = new ModAction("Reload Save With File Seed", ModActions.reloadSaveWithFileSeed, KeyCode.F2, "SaveReloader.Reload.WithFile");
+            internal static ModAction reloadSaveWithCurrentSeed = new ModAction("Reload Save With Current Seed", ModActions.reloadSaveWithCurrentSeed, KeyCode.None, "SaveReloader.Reload.WithCurrent");
+            internal static ModAction reloadSaveWithNewSeed = new ModAction("Reload Save With New Seed", ModActions.reloadSaveWithNewSeed, KeyCode.None, "SaveReloader.Reload.WithNew");
 
-            internal static KatieTransitionAction resetSaveWithFileSeed = new KatieTransitionAction("Reset Save With File Seed", KatieActions.resetSaveWithFileSeed, KeyCode.F3, defaultTransition, "SaveReloader.Reset.WithFile");
-            internal static KatieTransitionAction resetSaveWithCurrentSeed = new KatieTransitionAction("Reset Save With Current Seed", KatieActions.resetSaveWithCurrentSeed, KeyCode.Alpha3, defaultTransition, "SaveReloader.Reset.WithCurrent");
-            internal static KatieTransitionAction resetSaveWithNewSeed = new KatieTransitionAction("Reset Save With New Seed", KatieActions.resetSaveWithNewSeed, KeyCode.None, defaultTransition, "SaveReloader.Reset.WithNew");
+            internal static ModAction resetSaveWithFileSeed = new ModAction("Reset Save With File Seed", ModActions.resetSaveWithFileSeed, KeyCode.None, "SaveReloader.Reset.WithFile");
+            internal static ModAction resetSaveWithCurrentSeed = new ModAction("Reset Save With Current Seed", ModActions.resetSaveWithCurrentSeed, KeyCode.F3, "SaveReloader.Reset.WithCurrent");
+            internal static ModAction resetSaveWithNewSeed = new ModAction("Reset Save With New Seed", ModActions.resetSaveWithNewSeed, KeyCode.None, "SaveReloader.Reset.WithNew");
 
             internal static void CreateConfigEntries()
             {
@@ -179,23 +202,27 @@ namespace KatieSaveHelper
                 disableSaveSelectDelay.CreateValueConfigEntry("Whether the mod should disable the small delay before the scene transition after selecting a save in the Main Menu");
                 disableSaveFileLockAfterCompletion.CreateValueConfigEntry("Whether the mod should disable save files becoming locked after being completed");
                 disableSaveFileEncryption.CreateValueConfigEntry("Whether the mod should prevent the game from encrypting save files when they are updated");
+                disableMetaSaveFileEncryption.CreateValueConfigEntry("Whether the mod should prevent the game from encrypting the meta save file when it is updated");
                 disableRemoteSaveSync.CreateValueConfigEntry("Whether the mod should prevent the game from overwriting existing save files with backups from Steam Remote Storage on launch");
 
-                psuedoRandomTargetFrankDoor.CreateValueConfigEntry("Whether a single door or multiple doors in the Lost Village will be knockable");
-                psuedoRandomTargetTaxiHead.CreateValueConfigEntry("Name of the Taxi Head that the mod's psuedo-randomizer will target when generating a new seed");
-                psuedoRandomTargetPurgeRoomGoals.CreateValueConfigEntry("Order of the room goals during the Purge Event Maze that the mod's psuedo-randomizer will target when generating a new seed");
-                psuedoRandomTargetPurgeRoomObstacles.CreateValueConfigEntry("Dog obstacles within each room during the Purge Event Maze that the mod's psuedo-randomizer will target when generating a new seed");
-                psuedoRandomTargetBlinkAttempt.CreateValueConfigEntry("The range of attempt numbers in which ENA will blink for the first time");
-                psuedoRandomBlinkAssumeInCore.CreateValueConfigEntry("Whether to assume the player is in the core when the randomizer is simulating blink attempts");
-                psuedoRandomEnaTaxiMood.CreateValueConfigEntry("Which side of ENA will speak for the special dialogue during the first interaction with the Taxi Driver");
-                psuedoRandomMaxAttempts.CreateValueConfigEntry("Maximum number of attempts the psuedo-randomizer will make to find a matching seed before quitting");
-                psuedoRandomNaturalSeedsOnly.CreateValueConfigEntry("Whether the mod's psuedo-randomizer should exclusively generate seeds the game itself can naturally generate");
+                pseudoRandomTargetFrankDoor.CreateValueConfigEntry("Whether a single door or multiple doors in the Lost Village will be knockable");
+                pseudoRandomTargetTaxiHead.CreateValueConfigEntry("Name of the Taxi Head that the mod's pseudo-randomizer will target when generating a new seed");
+                pseudoRandomTargetPurgeRoomGoals.CreateValueConfigEntry("Order of the room goals during the Purge Event Maze that the mod's pseudo-randomizer will target when generating a new seed");
+                pseudoRandomTargetPurgeRoomObstacles.CreateValueConfigEntry("Dog obstacles within each room during the Purge Event Maze that the mod's pseudo-randomizer will target when generating a new seed");
+                pseudoRandomTargetBlinkAttempt.CreateValueConfigEntry("The range of attempt numbers in which ENA will blink for the first time");
+                pseudoRandomBlinkAssumeInCore.CreateValueConfigEntry("Whether to assume the player is in the core when the randomizer is simulating blink attempts");
+                pseudoRandomEnaTaxiMood.CreateValueConfigEntry("Which side of ENA will speak for the special dialogue during the first interaction with the Taxi Driver");
+                pseudoRandomMaxAttempts.CreateValueConfigEntry("Maximum number of attempts the pseudo-randomizer will make to find a matching seed before quitting");
+                pseudoRandomNaturalSeedsOnly.CreateValueConfigEntry("Whether the mod's pseudo-randomizer should exclusively generate seeds the game itself can naturally generate");
 
+                baseTransitionType.CreateValueConfigEntry("The transition type that hotkey actions should use when they trigger a scene transition");
+                baseTransitionColor.CreateValueConfigEntry("The color that transitions will fade into and out of when a hotkey action triggers a scene transition");
+                baseTransitionFadeInTime.CreateValueConfigEntry("The amount of time (in seconds) the transition should fade in for when a hotkey action triggers a scene transition");
+                baseTransitionFadeOutTime.CreateValueConfigEntry("The amount of time (in seconds) the transition should fade out for when a hotkey action triggers a scene transition");
                 showToasts.CreateValueConfigEntry("Whether the mod should display a toast notification on the screen when performing the mod's various hotkey actions");
                 notifyOnFirstBlinkAttempts.CreateValueConfigEntry("Whether the mod should display a toast notification when the game internally attempts a blink and has not yet triggered the randomizer's first blink");
                 notifyOnSimulatedAchievements.CreateValueConfigEntry("Whether the mod should display a toast notification when the game internally triggers an achievement that isn't already in the mod's Simulated Achievements list");
                 simulatedAchievementToastHoldTime.CreateValueConfigEntry("How long Simulated Achievement toasts should remain on the screen before fading out");
-                resetSimulatedAchievements.CreateValueConfigEntry("What will trigger the mod's internal Simulated Achievements list being reset");
                 logConfigOnReload.CreateValueConfigEntry("Whether the mod should print the newly loaded config to the modloader's console log after reloading it");
                 assetSubcriber.CreateValueConfigEntry("Whether the mod should attempt to download new assets from it's GitHub repo on launch, when they are available");
                 debugMode.CreateValueConfigEntry("Whether the mod should print additional debug messages to the modloader's console log");
@@ -207,33 +234,19 @@ namespace KatieSaveHelper
                 regenerateSessionSeedAction.CreateKeyConfigEntry("regenerate the game's active session seed using the generator specified in the 'Session Seed Generator Type' setting");
                 regenerateHardwareSeedAction.CreateKeyConfigEntry("regenerate the game's active hardware seed using the generator specified in the 'Hardware Seed Generator Type' setting");
                 resetGameBlinkRandomizerAction.CreateKeyConfigEntry("reset the game's Blink Randomizer");
-                resetSimulatedAchievementsAction.CreateKeyConfigEntry("reset the mod's Simulated Achievements list");
 
-                exitToSaveSelect.CreateKeyConfigEntry("immediately exit the current save to the Save Select Menu");
-                exitToSaveSelectAndEraseSave.CreateKeyConfigEntry("immediately erase the current save and exit to the Save Select Menu");
-                warpToNextScene.CreateKeyConfigEntry("immediately warp to the next scene from the game's internal scene list");
-                warpToPrevScene.CreateKeyConfigEntry("immediately warp to the previous scene from the game's internal scene list");
-                warpToNextEntrance.CreateKeyConfigEntry("immediately warp to the next scene entrance within the currently loaded scene");
-                warpToPrevEntrance.CreateKeyConfigEntry("immediately warp to the previous scene entrance within the currently loaded scene");
-                reloadSaveWithFileSeed.CreateKeyConfigEntry("reload the current save normally, using the seed from it's respective save file");
-                reloadSaveWithCurrentSeed.CreateKeyConfigEntry("reload the current save with the currently loaded seed");
-                reloadSaveWithNewSeed.CreateKeyConfigEntry("reload the current save with a new seed generated using the method specified in the 'Save Seed Generator Type' setting");
-                resetSaveWithFileSeed.CreateKeyConfigEntry("immediately erase the current save, create a new empty one in the same slot that has the same seed as the deleted save file, then load it");
-                resetSaveWithCurrentSeed.CreateKeyConfigEntry("immediately erase the current save, create a new empty one in the same slot that has the currently loaded seed, then load it");
-                resetSaveWithNewSeed.CreateKeyConfigEntry("immediately erase the current save, create a new empty one in the same slot that has a new generated seed using the method specified in the 'Save Seed Generator Type' setting, then load it");
-
-                exitToSaveSelect.CreateTransitionConfigEntry();
-                exitToSaveSelectAndEraseSave.CreateTransitionConfigEntry();
-                warpToNextScene.CreateTransitionConfigEntry();
-                warpToPrevScene.CreateTransitionConfigEntry();
-                warpToNextEntrance.CreateTransitionConfigEntry();
-                warpToPrevEntrance.CreateTransitionConfigEntry();
-                reloadSaveWithFileSeed.CreateTransitionConfigEntry();
-                reloadSaveWithCurrentSeed.CreateTransitionConfigEntry();
-                reloadSaveWithNewSeed.CreateTransitionConfigEntry();
-                resetSaveWithFileSeed.CreateTransitionConfigEntry();
-                resetSaveWithCurrentSeed.CreateTransitionConfigEntry();
-                resetSaveWithNewSeed.CreateTransitionConfigEntry();
+                exitToSaveSelect.CreateKeyConfigEntry("Key used to immediately exit the current save to the Save Select Menu");
+                exitToSaveSelectAndEraseSave.CreateKeyConfigEntry("Key used to immediately erase the current save and exit to the Save Select Menu");
+                warpToNextScene.CreateKeyConfigEntry("Key used to immediately warp to the next scene from the game's internal scene list");
+                warpToPrevScene.CreateKeyConfigEntry("Key used to immediately warp to the previous scene from the game's internal scene list");
+                warpToNextEntrance.CreateKeyConfigEntry("Key used to immediately warp to the next scene entrance within the currently loaded scene");
+                warpToPrevEntrance.CreateKeyConfigEntry("Key used to immediately warp to the previous scene entrance within the currently loaded scene");
+                reloadSaveWithFileSeed.CreateKeyConfigEntry("Key used to reload the current save normally, using the seed from it's respective save file");
+                reloadSaveWithCurrentSeed.CreateKeyConfigEntry("Key used to reload the current save with the currently loaded seed");
+                reloadSaveWithNewSeed.CreateKeyConfigEntry("Key used to reload the current save with a new seed generated using the method specified in the 'Save Seed Generator Type' setting");
+                resetSaveWithFileSeed.CreateKeyConfigEntry("Key used to immediately erase the current save, create a new empty one in the same slot that has the same seed as the deleted save file, then load it");
+                resetSaveWithCurrentSeed.CreateKeyConfigEntry("Key used to immediately erase the current save, create a new empty one in the same slot that has the currently loaded seed, then load it");
+                resetSaveWithNewSeed.CreateKeyConfigEntry("Key used to immediately erase the current save, create a new empty one in the same slot that has a new generated seed using the method specified in the 'Save Seed Generator Type' setting, then load it");
 
                 toastFontFileName.CreateValueConfigEntry("Name of the font '.ttf' file the toast should load it's displayed font from");
                 toastFontSize.CreateValueConfigEntry("Font size the toast should use");
@@ -258,18 +271,18 @@ namespace KatieSaveHelper
             LoadOptionsFromConfig();
 
             // Set default toggle settings
-            KatieActions.autoSaveDisabled = Settings.autoSaveDisabledByDefault.Value;
+            ModActions.autoSaveDisabled = Settings.autoSaveDisabledByDefault.Value;
         }
         public static void LoadOptionsFromConfig()
         {
-            foreach (IKatieSetting setting in allSettings)
+            foreach (IModSetting setting in allSettings)
             {
                 setting.SetValuesFromConfig();
             }
 
-            KatiePsuedoRandomizer.ResetTargetEventLists();
+            KatiePseudoRandomizer.ResetTargetEventLists();
 
-            foreach (IKatieActionBase action in allActions)
+            foreach (IModActionBase action in allActions)
             {
                 action.SetValuesFromConfig();
             }
@@ -277,6 +290,12 @@ namespace KatieSaveHelper
             TryPrintConfig();
 
             OnConfigLoaded.Invoke();
+        }
+
+        public static void DisableDefaults()
+        {
+            foreach(IModActionBase action in allActions)
+                action.DisableDefaultKey();
         }
 
         public static void ReloadConfig(bool async = false) =>
@@ -309,28 +328,23 @@ namespace KatieSaveHelper
             string configLog = $"Using mod config: \n" +
                 $"\tSettings: \n";
 
-            foreach (IKatieSetting setting in allSettings)
+            foreach (IModSetting setting in allSettings)
             {
                 configLog += $"\t\t{setting.InternalName}: {setting.GetValueAsObject()}\n";
             }
 
             configLog += $"\tKeys: \n";
 
-            foreach (IKatieActionBase action in allActiveActions)
+            if (allActiveActions.Any())
             {
-                configLog += $"\t\t{action.InternalName}: {action.Key}\n";
+                foreach (IModActionBase action in allActiveActions)
+                {
+                    configLog += $"\t\t{action.InternalName}: {action.Key}\n";
+                }
             }
-
-            configLog += $"\tTransitions: \n";
-
-            foreach (KatieTransitionAction action in allActiveTransitionActions)
+            else
             {
-                configLog += $"\t\t{action.InternalName}:\n" +
-                             $"\t\t\tType: {action.Transition.Type}\n";
-                if (action.Transition.Type == SceneChanger.TransitionType.FadeToColor)
-                    configLog += $"\t\t\tColor: {action.Transition.hexColor}\n" +
-                                $"\t\t\tFade-In: {action.Transition.FadeInTime}\n" +
-                                $"\t\t\tFade-Out: {action.Transition.FadeOutTime}\n";
+                configLog += "\t\tNone set";
             }
 
             KatieLogger.Info(configLog);

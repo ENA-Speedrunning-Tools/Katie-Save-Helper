@@ -5,10 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using LMirman.Utilities;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {
-    // Insert custom psuedo-random seed into new save if the 'use psuedo random seed on new saves' option is enabled
+    // Insert custom pseudo-random seed into new save if the 'use pseudo random seed on new saves' option is enabled
 
     [HarmonyPatch(typeof(SaveFile), nameof(SaveFile.ResetSave))]
     public static class ResetSave_Patch
@@ -27,7 +28,7 @@ namespace KatieSaveHelper.Patches
 
             if (KatieConfig.Settings.disableSaveFileEncryption.Value)
             {
-                gameFile.WriteFileAsJsonDat();
+                GameFile_Patch.WriteFileAsJsonDat(gameFile);
             }
             else
             {

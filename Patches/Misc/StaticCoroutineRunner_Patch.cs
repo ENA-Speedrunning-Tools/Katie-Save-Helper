@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using JoelG.ENA4;
 using System.Collections;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {

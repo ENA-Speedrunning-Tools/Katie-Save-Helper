@@ -1,5 +1,6 @@
 ﻿using JoelG.ENA4.UI;
 using HarmonyLib;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {
@@ -32,9 +33,9 @@ namespace KatieSaveHelper.Patches
 
             MainMenuPanelType panelType;
 
-            if (KatieActions.customMainMenuPanelOnLoad.IsReady)
+            if (ModActions.customMainMenuPanelOnLoad.IsReady)
             {
-                panelType = KatieActions.customMainMenuPanelOnLoad.TakeValue();
+                panelType = ModActions.customMainMenuPanelOnLoad.TakeValue();
             }
             else
             {

@@ -2,6 +2,8 @@
 using JoelG.ENA4.UI;
 using JoelG.ENA4;
 using System.Reflection;
+using KatieSaveHelper.Features.Util;
+using KatieSaveHelper.Features.API;
 
 namespace KatieSaveHelper.Patches
 {

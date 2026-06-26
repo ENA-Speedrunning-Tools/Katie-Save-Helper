@@ -8,7 +8,7 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using KatieSaveHelper.Patches;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
     public static class KatieSceneWarp
     {
@@ -176,7 +176,7 @@ namespace KatieSaveHelper
                 {
                     KatieUtil.ChangeScene(
                         sceneName,
-                        transition: KatieConfig.Settings.warpToNextScene.Transition,
+                        transition: KatieConfig.Settings.baseTransition,
                         notifyType: SceneChanger.NotifyType.Notify,
                         origin: KatieSceneChanger.Origin.Manual,
                         stopAudio: true,
@@ -204,7 +204,7 @@ namespace KatieSaveHelper
                 {
                     KatieUtil.ChangeScene(
                         sceneName,
-                        transition: KatieConfig.Settings.warpToPrevScene.Transition,
+                        transition: KatieConfig.Settings.baseTransition,
                         notifyType: SceneChanger.NotifyType.Notify,
                         origin: KatieSceneChanger.Origin.Manual,
                         stopAudio: true,
@@ -238,7 +238,7 @@ namespace KatieSaveHelper
             KatieUtil.ChangeScene(
                 sceneInfo.name,
                 target,
-                transition: KatieConfig.Settings.warpToPrevScene.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 notifyType: SceneChanger.NotifyType.Notify,
                 origin: KatieSceneChanger.Origin.Manual,
                 stopAudio: true,
@@ -268,7 +268,7 @@ namespace KatieSaveHelper
             KatieUtil.ChangeScene(
                 sceneInfo.name,
                 target,
-                transition: KatieConfig.Settings.warpToPrevScene.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 notifyType: SceneChanger.NotifyType.Notify,
                 origin: KatieSceneChanger.Origin.Manual,
                 stopAudio: true,

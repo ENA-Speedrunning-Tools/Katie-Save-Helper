@@ -1,5 +1,6 @@
 ﻿using JoelG.ENA4;
 using System.Collections.Generic;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper
 {
@@ -9,16 +10,16 @@ namespace KatieSaveHelper
         Salesman,
         Meanie
     }
-    internal class KatiePsuedoHardwareRandomizer : KatiePsuedoRandomizerBase
+    internal class KatiePseudoHardwareRandomizer : KatiePseudoRandomizerBase
     {
         public override string DisplayName => "Hardware Mode";
         private readonly int enaTaxiMoodIdHash = SaveRandomizer.GetStableHashCode("ENATaxiMoodRand");
-        public override List<PsuedoTargetEvent> GetNewTargetEventList()
+        public override List<PseudoTargetEvent> GetNewTargetEventList()
         {
-            var targetEventList = new List<PsuedoTargetEvent>();
+            var targetEventList = new List<PseudoTargetEvent>();
 
-            if (KatieConfig.Settings.psuedoRandomEnaTaxiMood.Value != EnaTaxiMood.Any)
-                targetEventList.Add(PsuedoTargetEvent.Create("EnaTaxiMood", EvaluateEnaTaxiMood, KatieConfig.Settings.psuedoRandomEnaTaxiMood.Value));
+            if (KatieConfig.Settings.pseudoRandomEnaTaxiMood.Value != EnaTaxiMood.Any)
+                targetEventList.Add(PseudoTargetEvent.Create("EnaTaxiMood", EvaluateEnaTaxiMood, KatieConfig.Settings.pseudoRandomEnaTaxiMood.Value));
 
             return targetEventList;
         }
