@@ -6,10 +6,12 @@ using System;
 using System.Collections;
 using MelonLoader;
 using System.IO;
+using KatieSaveHelper.Features.API;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper
 {
-    public static class KatieActions
+    public static class ModActions
     {
         internal static StagedValue<MainMenuPanelType> customMainMenuPanelOnLoad = new StagedValue<MainMenuPanelType>();
 
@@ -148,8 +150,8 @@ namespace KatieSaveHelper
             int hardwareHash = SaveRandomizerHashes.GetHashByType(SaveRandomizerHashes.HashType.Hardware);
             int saveHash = SaveRandomizerHashes.GetHashByType(SaveRandomizerHashes.HashType.SaveFile);
 
-            var purgeTuple = KatiePsuedoRandomizer.SaveMode.EvaluatePurgeSpecial(saveHash);
-            var blinkTuple = KatiePsuedoRandomizer.SessionMode.EvaluateFirstBlink(playSessionHash);
+            var purgeTuple = KatiePseudoRandomizer.SaveMode.EvaluatePurgeSpecial(saveHash);
+            var blinkTuple = KatiePseudoRandomizer.SessionMode.EvaluateFirstBlink(playSessionHash);
 
             KatieLogger.Info($"Current Seeds:" +
                 $"\n\tActive Save Seed: {saveHash}" +
@@ -159,15 +161,15 @@ namespace KatieSaveHelper
 
             KatieLogger.Info("Active Events: " +
                 $"\n\tSave Events: " +
-                $"\n\t\tFrank Door: {KatiePsuedoRandomizer.SaveMode.frankDoor.Evaluate(saveHash)?.Name}" +
-                $"\n\t\tTaxi Driver Head: {KatiePsuedoRandomizer.SaveMode.taxiHeads.Evaluate(saveHash)?.Name}" +
+                $"\n\t\tFrank Door: {KatiePseudoRandomizer.SaveMode.frankDoor.Evaluate(saveHash)?.Name}" +
+                $"\n\t\tTaxi Driver Head: {KatiePseudoRandomizer.SaveMode.taxiHeads.Evaluate(saveHash)?.Name}" +
                 $"\n\t\tPurge Goals: {string.Join(", ", purgeTuple.purgeGoals)}" +
                 $"\n\t\tPurge Obstacles: {string.Join(", ", purgeTuple.purgeObstacles)}" +
                 $"\n\tSession Events: " +
                 $"\n\t\tFirst Possible Normal Blink Attempt: {blinkTuple.firstNormalBlinkAttempt}" +
                 $"\n\t\tFirst Possible Core Blink Attempt: {blinkTuple.firstCoreBlinkAttempt}" +
                 $"\n\tHardware Events: " +
-                $"\n\t\tENA Taxi Mood: {KatiePsuedoRandomizer.HardwareMode.EvaluateEnaTaxiMood(hardwareHash)}"
+                $"\n\t\tENA Taxi Mood: {KatiePseudoRandomizer.HardwareMode.EvaluateEnaTaxiMood(hardwareHash)}"
                 );
 
             ToastBehaviours.QuickAction("Current seed info logged", "KSH.LogCurrentSeedInfo");
@@ -192,7 +194,7 @@ namespace KatieSaveHelper
 
             customMainMenuPanelOnLoad.StageValue(MainMenuPanelType.FileSelect);
 
-            KatieUtil.ChangeScene("Menu", transition: KatieConfig.Settings.exitToSaveSelect.Transition, stopAudio: true, stopCutscenes: true);
+            KatieUtil.ChangeScene("Menu", transition: KatieConfig.Settings.baseTransition, stopAudio: true, stopCutscenes: true);
         }
 
         public static void exitToSaveSelectAndEraseSave()
@@ -209,7 +211,7 @@ namespace KatieSaveHelper
 
             customMainMenuPanelOnLoad.StageValue(MainMenuPanelType.FileSelect);
 
-            KatieUtil.ChangeScene("Menu", transition: KatieConfig.Settings.exitToSaveSelectAndEraseSave.Transition, stopAudio: true, stopCutscenes: true);
+            KatieUtil.ChangeScene("Menu", transition: KatieConfig.Settings.baseTransition, stopAudio: true, stopCutscenes: true);
 
             ToastController.TryQueueAndLogToast($"Save {currentSaveIndex} erased", "KSH.ExitToSaveSelect.SaveErased");
         }
@@ -398,25 +400,6 @@ namespace KatieSaveHelper
             ToastBehaviours.QuickAction("Blink Randomizer reset", "KSH.ResetGameBlinkRandomizer.Success");
         }
 
-        public static void resetSimulatedAchievements()
-        {
-            if (KatieConfig.Settings.resetSimulatedAchievements.Value != CustomEventType.OnHotkey)
-            {
-                ToastBehaviours.Notice("Hotkey for resetting Simulated Achievements is disabled", "KSH.ResetSimulatedAchievements.Disabled");
-                return;
-            }
-
-            if (ActiveSceneName != "Menu")
-            {
-                ToastBehaviours.Notice("Cannot reset Simulated Achievements outside Main Menu", "KSH.ResetSimulatedAchievements.NotInMenu");
-                return;
-            }
-
-            Achievements_Patch.ResetSimulatedAchievements();
-
-            ToastBehaviours.QuickAction("Simulated Achievements reset", "KSH.ResetSimulatedAchievements.Success");
-        }
-
         public static IEnumerator reloadSaveWithFileSeed(StaticCoroutine scWrapper)
         {
             if (ActiveSceneName == "Menu")
@@ -432,7 +415,7 @@ namespace KatieSaveHelper
 
             var continueTask = ContinueSave_Patch.ContinueSaveAsync(
                 token: scWrapper.CancelToken,
-                transition: KatieConfig.Settings.reloadSaveWithFileSeed.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 origin: KatieSceneChanger.Origin.Manual
                 );
 
@@ -470,7 +453,7 @@ namespace KatieSaveHelper
             var continueTask = ContinueSave_Patch.ContinueSaveAsync(
                 token: scWrapper.CancelToken,
                 seed: SaveFile.CurrentSave.SaveHash,
-                transition: KatieConfig.Settings.reloadSaveWithCurrentSeed.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 origin: KatieSceneChanger.Origin.Manual
                 );
 
@@ -508,7 +491,7 @@ namespace KatieSaveHelper
             var continueTask = ContinueSave_Patch.ContinueSaveAsync(
                 token: scWrapper.CancelToken,
                 seedGenerator: KatieUtil.GenerateSaveSeed,
-                transition: KatieConfig.Settings.reloadSaveWithNewSeed.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 origin: KatieSceneChanger.Origin.Manual
                 );
 
@@ -549,7 +532,7 @@ namespace KatieSaveHelper
                 token: scWrapper.CancelToken,
                 seed: gameFile.Data.SaveHash,
                 triggerReset: true,
-                transition: KatieConfig.Settings.resetSaveWithFileSeed.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 origin: KatieSceneChanger.Origin.Manual
                 );
 
@@ -587,7 +570,7 @@ namespace KatieSaveHelper
                 token: scWrapper.CancelToken,
                 seed: SaveFile.CurrentSave.SaveHash,
                 triggerReset: true,
-                transition: KatieConfig.Settings.resetSaveWithCurrentSeed.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 origin: KatieSceneChanger.Origin.Manual
                 );
 
@@ -627,7 +610,7 @@ namespace KatieSaveHelper
             var continueTask = ContinueSave_Patch.ContinueSaveAsync(
                 token: scWrapper.CancelToken,
                 triggerReset: true,
-                transition: KatieConfig.Settings.resetSaveWithNewSeed.Transition,
+                transition: KatieConfig.Settings.baseTransition,
                 origin: KatieSceneChanger.Origin.Manual
                 );
 

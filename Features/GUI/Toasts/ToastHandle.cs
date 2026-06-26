@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.API
 {
     public class ToastHandle
     {

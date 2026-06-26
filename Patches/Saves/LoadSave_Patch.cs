@@ -4,6 +4,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {
@@ -72,10 +73,10 @@ namespace KatieSaveHelper.Patches
                 if (readSuccess && dataProp != null && !triggerReset)
                 {
                     var dataValue = dataProp.GetValue(gameFile);
+
                     if (dataValue != null)
                     {
                         saveHash = (int)saveHashField.GetValue(dataValue);
-
                         validateMethod.Invoke(dataValue, null);
                     }
                 }

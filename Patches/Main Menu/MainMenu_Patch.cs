@@ -7,6 +7,8 @@ using System.Reflection;
 using UnityEngine;
 using System.Threading;
 using UnityEngine.SceneManagement;
+using KatieSaveHelper.Features.Util;
+using KatieSaveHelper.Features.API;
 
 namespace KatieSaveHelper.Patches
 {

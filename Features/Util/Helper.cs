@@ -15,9 +15,14 @@ using System;
 using System.IO;
 using UnityEngine.Events;
 using System.Collections.Generic;
-using KatieSaveHelper_MelonLoader.Patches;
+using System.Diagnostics;
+using System.Text;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using KatieSaveHelper.Features.API;
+using System.Runtime.CompilerServices;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
     public enum SeedType
     {
@@ -161,6 +166,36 @@ namespace KatieSaveHelper
                     }
                 }
             }
+        }
+
+        public static FieldInfo GetField(Type instanceType, string name)
+        {
+            while (instanceType != null)
+            {
+                var field = AccessTools.Field(instanceType, name);
+                if (field != null)
+                    return field;
+
+                instanceType = instanceType.BaseType;
+            }
+
+            return null;
+        }
+
+        public static string GetModName(Type type)
+        {
+            var asm = type.Assembly;
+
+            var melon = asm.GetCustomAttribute<MelonLoader.MelonInfoAttribute>();
+
+            string modName;
+
+            if (melon != null)
+                modName = melon.Name;
+            else
+                modName = asm.GetName().Name;
+
+            return modName.Replace(" ", "");
         }
 
         // Coroutine stuff
@@ -358,9 +393,6 @@ namespace KatieSaveHelper
 
             if (KatieConfig.Settings.resetBlinkRandomizer.Value == result.eventType)
                 PlayerRandomBlink_Patch.ResetBlinkChanceGenerator();
-
-            if (KatieConfig.Settings.resetSimulatedAchievements.Value == result.eventType)
-                Achievements_Patch.ResetSimulatedAchievements();
         }
 
         public static async Task TriggerCustomEventAsync(CustomEventType eventType, CancellationToken token = default)
@@ -389,8 +421,6 @@ namespace KatieSaveHelper
 
             if (KatieConfig.Settings.resetBlinkRandomizer.Value == eventType)
                 PlayerRandomBlink_Patch.ResetBlinkChanceGenerator();
-            if (KatieConfig.Settings.resetSimulatedAchievements.Value == eventType)
-                Achievements_Patch.ResetSimulatedAchievements();
         }
 
         public static IEnumerator TriggerCustomEventRoutine(CustomEventType eventType, StaticCoroutine scWrapper)
@@ -424,8 +454,6 @@ namespace KatieSaveHelper
 
             if (KatieConfig.Settings.resetBlinkRandomizer.Value == eventType)
                 PlayerRandomBlink_Patch.ResetBlinkChanceGenerator();
-            if (KatieConfig.Settings.resetSimulatedAchievements.Value == eventType)
-                Achievements_Patch.ResetSimulatedAchievements();
         }
 
         // Random stuff
@@ -452,24 +480,24 @@ namespace KatieSaveHelper
         {
             KatieLogger.Info($"Generating new {type} seed...");
 
-            KatiePsuedoRandomizerBase randomizer;
-            KatieSetting<SeedGenerator> generatorSetting;
-            KatieSetting<int> staticSeedSetting;
+            KatiePseudoRandomizerBase randomizer;
+            ModSetting<SeedGenerator> generatorSetting;
+            ModSetting<int> staticSeedSetting;
 
             switch (type)
             {
                 default:
-                    randomizer = KatiePsuedoRandomizer.SaveMode;
+                    randomizer = KatiePseudoRandomizer.SaveMode;
                     generatorSetting = KatieConfig.Settings.saveSeedGeneratorType;
                     staticSeedSetting = KatieConfig.Settings.staticSaveSeed;
                     break;
                 case SeedType.Session:
-                    randomizer = KatiePsuedoRandomizer.SessionMode;
+                    randomizer = KatiePseudoRandomizer.SessionMode;
                     generatorSetting = KatieConfig.Settings.sessionSeedGeneratorType;
                     staticSeedSetting = KatieConfig.Settings.staticSessionSeed;
                     break;
                 case SeedType.Hardware:
-                    randomizer = KatiePsuedoRandomizer.HardwareMode;
+                    randomizer = KatiePseudoRandomizer.HardwareMode;
                     generatorSetting = KatieConfig.Settings.hardwareSeedGeneratorType;
                     staticSeedSetting = KatieConfig.Settings.staticHardwareSeed;
                     break;
@@ -479,10 +507,10 @@ namespace KatieSaveHelper
             {
                 case SeedGenerator.Static:
                     return (SeedGeneratorReturnCode.Success, staticSeedSetting.Value);
-                case SeedGenerator.PsuedoRandom:
+                case SeedGenerator.PseudoRandom:
                     try
                     {
-                        var task = randomizer.GeneratePsuedoRandomSeed(token);
+                        var task = randomizer.GeneratePseudoRandomSeed(token);
                         await task.Await();
                         if (task.Result.success)
                             return (SeedGeneratorReturnCode.Success, task.Result.seed);
@@ -507,10 +535,10 @@ namespace KatieSaveHelper
             {
                 case SeedGenerator.Static:
                     return (SeedGeneratorReturnCode.Success, KatieConfig.Settings.staticSaveSeed.Value);
-                case SeedGenerator.PsuedoRandom:
+                case SeedGenerator.PseudoRandom:
                     try
                     {
-                        var task = KatiePsuedoRandomizer.SaveMode.GeneratePsuedoRandomSeed(token);
+                        var task = KatiePseudoRandomizer.SaveMode.GeneratePseudoRandomSeed(token);
                         await task.Await();
                         if (task.Result.success)
                             return (SeedGeneratorReturnCode.Success, task.Result.seed);
@@ -535,10 +563,10 @@ namespace KatieSaveHelper
             {
                 case SeedGenerator.Static:
                     return (SeedGeneratorReturnCode.Success, KatieConfig.Settings.staticSessionSeed.Value);
-                case SeedGenerator.PsuedoRandom:
+                case SeedGenerator.PseudoRandom:
                     try
                     {
-                        var task = KatiePsuedoRandomizer.SessionMode.GeneratePsuedoRandomSeed(token);
+                        var task = KatiePseudoRandomizer.SessionMode.GeneratePseudoRandomSeed(token);
                         await task.Await();
                         if (task.Result.success)
                             return (SeedGeneratorReturnCode.Success, task.Result.seed);
@@ -563,10 +591,10 @@ namespace KatieSaveHelper
             {
                 case SeedGenerator.Static:
                     return (SeedGeneratorReturnCode.Success, KatieConfig.Settings.staticHardwareSeed.Value);
-                case SeedGenerator.PsuedoRandom:
+                case SeedGenerator.PseudoRandom:
                     try
                     {
-                        var task = KatiePsuedoRandomizer.HardwareMode.GeneratePsuedoRandomSeed(token);
+                        var task = KatiePseudoRandomizer.HardwareMode.GeneratePseudoRandomSeed(token);
                         await task.Await();
                         if (task.Result.success)
                             return (SeedGeneratorReturnCode.Success, task.Result.seed);
@@ -687,6 +715,79 @@ namespace KatieSaveHelper
 
             if (target != null)
                 action(target);
+        }
+
+        // Save data stuff
+
+        public static T DeserializeExtendedSave<T>(string json,JsonSerializerSettings settings)
+        {
+            JObject root = JObject.Parse(json);
+
+            JObject moddedData = root["__moddedData"] as JObject;
+
+            root.Remove("__moddedData");
+
+            T save = root.ToObject<T>(JsonSerializer.Create(settings));
+
+            if (moddedData != null)
+                save.GetCustomDataContainer().FromSerializable(moddedData);
+
+            return save;
+        }
+
+        public static object DeserializeExtendedSave(string json, Type saveType, JsonSerializerSettings settings)
+        {
+            JObject root = JObject.Parse(json);
+
+            JObject moddedData = root["__moddedData"] as JObject;
+
+            root.Remove("__moddedData");
+
+            object save = root.ToObject(saveType, JsonSerializer.Create(settings));
+
+            if (moddedData != null)
+                save.GetCustomDataContainer().FromSerializable(moddedData);
+
+            return save;
+        }
+
+        
+        public static string SerializeExtendedSave(object save, JsonSerializerSettings settings, Formatting formatting)
+        {
+            JObject root = JObject.FromObject(save, JsonSerializer.Create(settings));
+
+            root["__moddedData"] = JObject.FromObject(save.GetCustomDataContainer().ToSerializable());
+
+            return root.ToString(formatting);
+        }
+
+        // Debug stuff
+
+        public static string GetFullStackTrace()
+        {
+            var stackTrace = new StackTrace(skipFrames: 1, fNeedFileInfo: false);
+            var frames = stackTrace.GetFrames();
+
+            if (frames == null)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+
+            foreach (var frame in frames)
+            {
+                var method = frame.GetMethod();
+                if (method == null)
+                    continue;
+
+                string declaringType =
+                    method.DeclaringType != null
+                        ? method.DeclaringType.FullName
+                        : "<no type>";
+
+                sb.AppendLine($"{declaringType}.{method.Name}");
+            }
+
+            return sb.ToString();
         }
     }
 }

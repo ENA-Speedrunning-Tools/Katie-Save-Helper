@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.API
 {
     public static class ToastBehaviours
     {

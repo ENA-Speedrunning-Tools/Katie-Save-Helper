@@ -9,7 +9,7 @@ using UnityEngine.TextCore.LowLevel;
 using UnityEngine;
 using System.Threading;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
 
     internal static class KatieAssetHandler

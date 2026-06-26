@@ -2,8 +2,11 @@
 using Newtonsoft.Json;
 using HarmonyLib;
 using System.Reflection;
+using KatieSaveHelper.Features.API;
+using System.Runtime.CompilerServices;
+using System;
 
-namespace KatieSaveHelper_MelonLoader.Patches
+namespace KatieSaveHelper.Patches
 {
     // Extension method to deep copy game data instances
 
@@ -38,6 +41,10 @@ namespace KatieSaveHelper_MelonLoader.Patches
                     JsonConvert.SerializeObject(sessionTraversalHistory)
                 ));
             }
+
+            // Copy modded save data
+
+            data.CopyCustomDataTo(copy);
 
             return copy;
         }

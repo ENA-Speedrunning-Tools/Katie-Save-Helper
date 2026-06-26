@@ -15,16 +15,16 @@ namespace KatieSaveHelper
         WithinRange
     }
 
-    internal class KatiePsuedoSessionRandomizer : KatiePsuedoRandomizerBase
+    internal class KatiePseudoSessionRandomizer : KatiePseudoRandomizerBase
     {
         public override string DisplayName => "Session Mode";
         private float normalBlinkProbability = Mathf.Clamp01(1f / (float)1000);
         private float coreBlinkProbability = Mathf.Clamp01(1f / (float)100);
-        public override List<PsuedoTargetEvent> GetNewTargetEventList()
+        public override List<PseudoTargetEvent> GetNewTargetEventList()
         {
-            var targetEventList = new List<PsuedoTargetEvent>();
+            var targetEventList = new List<PseudoTargetEvent>();
 
-            var blinkRangeTuple = ParseRange(KatieConfig.Settings.psuedoRandomTargetBlinkAttempt, "0");
+            var blinkRangeTuple = ParseRange(KatieConfig.Settings.pseudoRandomTargetBlinkAttempt, "0");
 
             bool blinkFlag = false;
             switch (blinkRangeTuple.Item1)
@@ -46,20 +46,20 @@ namespace KatieSaveHelper
 
             if (blinkFlag)
             {
-                float blinkProbability = KatieConfig.Settings.psuedoRandomBlinkAssumeInCore.Value ? coreBlinkProbability : normalBlinkProbability;
+                float blinkProbability = KatieConfig.Settings.pseudoRandomBlinkAssumeInCore.Value ? coreBlinkProbability : normalBlinkProbability;
                 switch (blinkRangeTuple.Item1)
                 {
                     case RangeType.EqualTo:
-                        targetEventList.Add(PsuedoTargetEvent.Create("FirstBlink_EqualTo", EvaluateFirstBlinkEqualTo, blinkRangeTuple.Item2[0], blinkProbability));
+                        targetEventList.Add(PseudoTargetEvent.Create("FirstBlink_EqualTo", EvaluateFirstBlinkEqualTo, blinkRangeTuple.Item2[0], blinkProbability));
                         break;
                     case RangeType.LessOrEqual:
-                        targetEventList.Add(PsuedoTargetEvent.Create("FirstBlink_LessOrEqual", EvaluateFirstBlinkLessOrEqual, blinkRangeTuple.Item2[0], blinkProbability));
+                        targetEventList.Add(PseudoTargetEvent.Create("FirstBlink_LessOrEqual", EvaluateFirstBlinkLessOrEqual, blinkRangeTuple.Item2[0], blinkProbability));
                         break;
                     case RangeType.GreaterOrEqual:
-                        targetEventList.Add(PsuedoTargetEvent.Create("FirstBlink_GreaterOrEqual", EvaluateFirstBlinkGreaterOrEqual, blinkRangeTuple.Item2[0], blinkProbability));
+                        targetEventList.Add(PseudoTargetEvent.Create("FirstBlink_GreaterOrEqual", EvaluateFirstBlinkGreaterOrEqual, blinkRangeTuple.Item2[0], blinkProbability));
                         break;
                     case RangeType.WithinRange:
-                        targetEventList.Add(PsuedoTargetEvent.Create("FirstBlink_WithinRange", EvaluateFirstBlinkWithinRange, blinkRangeTuple.Item2[0], blinkRangeTuple.Item2[1], blinkProbability));
+                        targetEventList.Add(PseudoTargetEvent.Create("FirstBlink_WithinRange", EvaluateFirstBlinkWithinRange, blinkRangeTuple.Item2[0], blinkRangeTuple.Item2[1], blinkProbability));
                         break;
                 }
             }
@@ -147,7 +147,7 @@ namespace KatieSaveHelper
             return blinkTuple;
         }
 
-        private static (RangeType, List<int>) ParseRange(KatieSetting<string> stringSetting, string defaultValue = null)
+        private static (RangeType, List<int>) ParseRange(ModSetting<string> stringSetting, string defaultValue = null)
         {
             string input = defaultValue != null ? stringSetting.TryGetRealValue(defaultValue) : stringSetting.TryGetRealValue();
 

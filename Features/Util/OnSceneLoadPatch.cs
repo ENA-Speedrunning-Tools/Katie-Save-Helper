@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
     public class OnSceneLoadPatch
     {

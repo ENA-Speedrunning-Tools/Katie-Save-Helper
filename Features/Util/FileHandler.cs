@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using System.Threading;
 
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
     public class FileHandler
     {

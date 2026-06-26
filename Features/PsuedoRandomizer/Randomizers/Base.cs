@@ -1,50 +1,47 @@
-﻿using JoelG.ENA4;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper
 {
-    public class PsuedoTargetEvent
+    public class PseudoTargetEvent
     {
         public string Name { get; private set; }
 
         private Func<int, bool> Event;
 
-        public static PsuedoTargetEvent Create(string name, Func<int, bool> function)
+        public static PseudoTargetEvent Create(string name, Func<int, bool> function)
         {
-            return new PsuedoTargetEvent
+            return new PseudoTargetEvent
             {
                 Name = name,
                 Event = (seed) => function(seed)
             };
         }
 
-        public static PsuedoTargetEvent Create<T>(string name, Func<int, T, bool> function, T value)
+        public static PseudoTargetEvent Create<T>(string name, Func<int, T, bool> function, T value)
         {
-            return new PsuedoTargetEvent
+            return new PseudoTargetEvent
             {
                 Name = name,
                 Event = (seed) => function(seed, value)
             };
         }
 
-        public static PsuedoTargetEvent Create<T1, T2>(string name, Func<int, T1, T2, bool> function, T1 value1, T2 value2)
+        public static PseudoTargetEvent Create<T1, T2>(string name, Func<int, T1, T2, bool> function, T1 value1, T2 value2)
         {
-            return new PsuedoTargetEvent
+            return new PseudoTargetEvent
             {
                 Name = name,
                 Event = (seed) => function(seed, value1, value2)
             };
         }
 
-        public static PsuedoTargetEvent Create<T1, T2, T3>(string name, Func<int, T1, T2, T3, bool> function, T1 value1, T2 value2, T3 value3)
+        public static PseudoTargetEvent Create<T1, T2, T3>(string name, Func<int, T1, T2, T3, bool> function, T1 value1, T2 value2, T3 value3)
         {
-            return new PsuedoTargetEvent
+            return new PseudoTargetEvent
             {
                 Name = name,
                 Event = (seed) => function(seed, value1, value2, value3)
@@ -57,18 +54,18 @@ namespace KatieSaveHelper
         }
     }
 
-    internal abstract class KatiePsuedoRandomizerBase
+    internal abstract class KatiePseudoRandomizerBase
     {
-        internal List<PsuedoTargetEvent> targetEventList = new List<PsuedoTargetEvent>();
+        internal List<PseudoTargetEvent> targetEventList = new List<PseudoTargetEvent>();
         public abstract string DisplayName { get; }
-        public abstract List<PsuedoTargetEvent> GetNewTargetEventList();
+        public abstract List<PseudoTargetEvent> GetNewTargetEventList();
 
         public void ResetTargetEventList()
         {
             targetEventList = GetNewTargetEventList();
         }
 
-        protected Dictionary<string, int> MapEventFailCounts(List<PsuedoTargetEvent> targetEventList)
+        protected Dictionary<string, int> MapEventFailCounts(List<PseudoTargetEvent> targetEventList)
         {
             var eventFailCountMap = new Dictionary<string, int>();
             foreach (var @event in targetEventList)
@@ -76,7 +73,7 @@ namespace KatieSaveHelper
             return eventFailCountMap;
         }
 
-        protected void PrintEventFailCounts(List<PsuedoTargetEvent> targetEventList, Dictionary<string, int> eventFailCountMap)
+        protected void PrintEventFailCounts(List<PseudoTargetEvent> targetEventList, Dictionary<string, int> eventFailCountMap)
         {
             string failStr = "Attempt Fails:\n";
             foreach (var @event in targetEventList)
@@ -84,7 +81,7 @@ namespace KatieSaveHelper
             KatieLogger.Info(failStr);
         }
 
-        public TrackedTask<(bool success, int seed)> GeneratePsuedoRandomSeed(CancellationToken token = default)
+        public TrackedTask<(bool success, int seed)> GeneratePseudoRandomSeed(CancellationToken token = default)
         {
             string identifier = $"KSH.Action.FindSeed.{DisplayName.Replace(" ", "")}";
 
@@ -95,16 +92,16 @@ namespace KatieSaveHelper
         }
         private (bool success, int seed) FindSeed(CancellationToken token)
         {
-            List<PsuedoTargetEvent> targetEventListCopy = targetEventList.ToList();
+            List<PseudoTargetEvent> targetEventListCopy = targetEventList.ToList();
 
             var eventFailCountMap = MapEventFailCounts(targetEventListCopy);
 
-            KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searching for seed...");
+            KatieLogger.Info($"(Seed Pseudo-Randomizer: {DisplayName}) Searching for seed...");
 
-            KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Active Events: {(targetEventListCopy.Any() ? string.Join(", ", targetEventListCopy.Select(x => x.Name)) : "None")}");
+            KatieLogger.Info($"(Seed Pseudo-Randomizer: {DisplayName}) Active Events: {(targetEventListCopy.Any() ? string.Join(", ", targetEventListCopy.Select(x => x.Name)) : "None")}");
 
-            long maxAttemptsConfig = KatieConfig.Settings.psuedoRandomMaxAttempts.Value;
-            bool naturalSeedsOnlyConfig = KatieConfig.Settings.psuedoRandomNaturalSeedsOnly.Value;
+            long maxAttemptsConfig = KatieConfig.Settings.pseudoRandomMaxAttempts.Value;
+            bool naturalSeedsOnlyConfig = KatieConfig.Settings.pseudoRandomNaturalSeedsOnly.Value;
 
             long maxAllowedAttempts = naturalSeedsOnlyConfig
                 ? Math.Min(maxAttemptsConfig, int.MaxValue)
@@ -123,7 +120,7 @@ namespace KatieSaveHelper
 
                 bool allPassed = true;
 
-                foreach (PsuedoTargetEvent @event in targetEventListCopy)
+                foreach (PseudoTargetEvent @event in targetEventListCopy)
                 {
                     if (!@event.Evaluate(currentSeed))
                     {
@@ -139,21 +136,21 @@ namespace KatieSaveHelper
 
             if (attemptCount >= maxAllowedAttempts)
             {
-                KatieLogger.Warning($"(Seed Psuedo-Randomizer: {DisplayName}) Seed not found.");
-                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
+                KatieLogger.Warning($"(Seed Pseudo-Randomizer: {DisplayName}) Seed not found.");
+                KatieLogger.Info($"(Seed Pseudo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
                 PrintEventFailCounts(targetEventListCopy, eventFailCountMap);
                 return (false, 0);
             }
             else if (token.IsCancellationRequested)
             {
-                KatieLogger.Warning($"(Seed Psuedo-Randomizer: {DisplayName}) Search cancelled.");
-                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
+                KatieLogger.Warning($"(Seed Pseudo-Randomizer: {DisplayName}) Search cancelled.");
+                KatieLogger.Info($"(Seed Pseudo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
                 return (false, 0);
             }
             else
             {
-                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Seed found! {currentSeed}");
-                KatieLogger.Info($"(Seed Psuedo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
+                KatieLogger.Info($"(Seed Pseudo-Randomizer: {DisplayName}) Seed found! {currentSeed}");
+                KatieLogger.Info($"(Seed Pseudo-Randomizer: {DisplayName}) Searched {attemptCount} total seeds");
                 return (true, currentSeed);
             }
         }
@@ -209,11 +206,11 @@ namespace KatieSaveHelper
         }
     }
 
-    internal static class KatiePsuedoRandomizer
+    internal static class KatiePseudoRandomizer
     {
-        public static readonly KatiePsuedoSaveRandomizer SaveMode = new KatiePsuedoSaveRandomizer();
-        public static readonly KatiePsuedoSessionRandomizer SessionMode = new KatiePsuedoSessionRandomizer();
-        public static readonly KatiePsuedoHardwareRandomizer HardwareMode = new KatiePsuedoHardwareRandomizer();
+        public static readonly KatiePseudoSaveRandomizer SaveMode = new KatiePseudoSaveRandomizer();
+        public static readonly KatiePseudoSessionRandomizer SessionMode = new KatiePseudoSessionRandomizer();
+        public static readonly KatiePseudoHardwareRandomizer HardwareMode = new KatiePseudoHardwareRandomizer();
         public static void ResetTargetEventLists()
         {
             SaveMode.ResetTargetEventList();

@@ -1,5 +1,5 @@
 ﻿
-namespace KatieSaveHelper
+namespace KatieSaveHelper.Features.Util
 {
     public class StagedValue<T>
     {

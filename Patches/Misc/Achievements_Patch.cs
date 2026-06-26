@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine.SceneManagement;
 using UnityEngine;
+using KatieSaveHelper.Features.API;
+using KatieSaveHelper.Features.Util;
 
 namespace KatieSaveHelper.Patches
 {
@@ -12,8 +14,6 @@ namespace KatieSaveHelper.Patches
     {
         private static readonly FieldInfo LookupField = AccessTools.Field(typeof(AchievementsLookup), "Lookup");
         private static readonly FieldInfo DefaultDataField = AccessTools.Field(typeof(AchievementsLookup), "defaultData");
-
-        private static List<string> simulatedAchievements = new List<string>();
 
         private static readonly OnSceneLoadPatch oslPatcher = new OnSceneLoadPatch(ApplyPatch, patchOnStartup: true);
 
@@ -44,28 +44,24 @@ namespace KatieSaveHelper.Patches
             var achData = AchievementsLookup.GetAchievementDataOrDefault(internalKey);
             bool keyIsValid = achData != defaultData;
 
-            if (keyIsValid && !simulatedAchievements.Contains(internalKey))
+            var saveAchList = SaveFile.CurrentSave?.GetOrCreateCustomData<KatieSaveData>().achievementList;
+
+            if (keyIsValid && saveAchList != null && !saveAchList.Contains(internalKey))
             {
-                simulatedAchievements.Add(internalKey);
+                saveAchList.Add(internalKey);
 
                 if (KatieConfig.Settings.notifyOnSimulatedAchievements.Value)
                 {
                     string achDisplayName = SteamUserStats.GetAchievementDisplayAttribute(internalKey, "name");
                     if (string.IsNullOrEmpty(achDisplayName))
                         achDisplayName = internalKey;
-                    ToastController.TryQueueAndLogToast(new ToastInstance($"Triggered Achievement '{achDisplayName}' ({simulatedAchievements.Count}/{Lookup.Count})", holdTime: Mathf.Max(0, KatieConfig.Settings.simulatedAchievementToastHoldTime.Value)));
+                    ToastController.TryQueueAndLogToast(new ToastInstance($"Triggered Achievement '{achDisplayName}' ({saveAchList.Count}/{Lookup.Count})", holdTime: Mathf.Max(0, KatieConfig.Settings.simulatedAchievementToastHoldTime.Value)));
                 }
             }
             else if (!keyIsValid)
             {
                 KatieLogger.Warning($"An unknown achievement key was triggered : '{internalKey}'");
             }
-        }
-
-        public static void ResetSimulatedAchievements()
-        {
-            simulatedAchievements.Clear();
-            KatieLogger.Info("Simulated Achievements reset");
         }
     }
 }
